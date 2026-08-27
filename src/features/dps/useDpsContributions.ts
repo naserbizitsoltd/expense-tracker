@@ -11,7 +11,12 @@ export function useDpsContributions(dps: Dps | null) {
   )
   const contributions = contributionsState.data ?? []
 
-  const totalDeposited = useMemo(() => contributions.reduce((sum, c) => sum + c.amount, 0), [contributions])
+  // Real contributions plus whatever was already deposited before this
+  // DPS was entered into the app (see Dps.openingDepositedAmount).
+  const totalDeposited = useMemo(
+    () => (dps?.openingDepositedAmount ?? 0) + contributions.reduce((sum, c) => sum + c.amount, 0),
+    [dps, contributions]
+  )
   const progress = useMemo(
     () => (dps ? getDpsProgress(dps, contributions.length) : null),
     [dps, contributions.length]

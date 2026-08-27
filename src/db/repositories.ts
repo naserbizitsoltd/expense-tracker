@@ -26,6 +26,7 @@ import type {
   RecurringTransaction,
   AppSettings,
   DbMetadata,
+  NotificationLogEntry,
 } from '@/types/entities'
 
 /**
@@ -424,6 +425,34 @@ export const appSettingsRepository = {
   async set(settings: Omit<AppSettings, 'id' | 'updatedAt'>): Promise<void> {
     try {
       await db.appSettings.put({ ...settings, id: APP_SETTINGS_ID, updatedAt: Date.now() })
+    } catch (error) {
+      throw toAppDbError(error)
+    }
+  },
+}
+
+// Reminder dedupe + Notification Center history — see
+// services/notificationService.ts and features/notifications/useReminders.ts.
+export const notificationLogRepository = {
+  async hasShown(id: string): Promise<boolean> {
+    try {
+      return (await db.notificationLog.get(id)) !== undefined
+    } catch (error) {
+      throw toAppDbError(error)
+    }
+  },
+  async markShown(entry: NotificationLogEntry): Promise<void> {
+    try {
+      await db.notificationLog.put(entry)
+    } catch (error) {
+      throw toAppDbError(error)
+    }
+  },
+  // Most recently shown reminders first — powers the Notification
+  // Center list in Settings.
+  async getRecent(limit = 20): Promise<NotificationLogEntry[]> {
+    try {
+      return await db.notificationLog.orderBy('shownAt').reverse().limit(limit).toArray()
     } catch (error) {
       throw toAppDbError(error)
     }

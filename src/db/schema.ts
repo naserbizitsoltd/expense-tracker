@@ -19,10 +19,11 @@ import type {
   RecurringTransaction,
   AppSettings,
   DbMetadata,
+  NotificationLogEntry,
 } from '@/types/entities'
 import { DB_METADATA_ID } from './id'
 
-export const SCHEMA_VERSION = 17
+export const SCHEMA_VERSION = 19
 
 export class AppDatabase extends Dexie {
   accounts!: Table<Account, string>
@@ -44,6 +45,7 @@ export class AppDatabase extends Dexie {
   appSettings!: Table<AppSettings, string>
   metadata!: Table<DbMetadata, string>
   ledgerEntries!: Table<LedgerEntry, string>
+  notificationLog!: Table<NotificationLogEntry, string>
 
   constructor() {
     super('ExpenseTrackerDB')
@@ -497,6 +499,75 @@ export class AppDatabase extends Dexie {
 
         await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
           schemaVersion: 17,
+          lastMigrationAt: Date.now(),
+          updatedAt: Date.now(),
+        })
+      })
+
+    // v18 — Local notification/reminder system. Adds the
+    // `notificationLog` table (dedupe + Notification Center history for
+    // reminders about upcoming recurring transactions, DPS
+    // installments, loan due dates, FDR maturity, and goal target
+    // dates — see services/notificationService.ts) and backfills the
+    // new `notificationsEnabled` / `reminderOffsetDays` fields on the
+    // existing appSettings singleton row (off by default; existing
+    // installs never get surprise notifications). No existing table's
+    // data is touched.
+    this.version(18)
+      .stores({
+        notificationLog: 'id, type, entityId, dueDate, shownAt',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('appSettings')
+          .toCollection()
+          .modify(
+            (
+              s: Omit<AppSettings, 'notificationsEnabled' | 'reminderOffsetDays'> & {
+                notificationsEnabled?: boolean
+                reminderOffsetDays?: number[]
+              }
+            ) => {
+              if (s.notificationsEnabled === undefined) s.notificationsEnabled = false
+              if (s.reminderOffsetDays === undefined) s.reminderOffsetDays = [1, 3, 7]
+            }
+          )
+
+        await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
+          schemaVersion: 18,
+          lastMigrationAt: Date.now(),
+          updatedAt: Date.now(),
+        })
+      })
+
+    // v19 — Existing/ongoing DPS support. Backfills `openingInstallmentsPaid`,
+    // `openingDepositedAmount`, and `openingInterestEarned` on `dps` (mirrors
+    // Account.openingBalance) so a DPS that already existed in real life can
+    // be entered at its current state without fabricating past contribution
+    // records. All existing rows get 0 for each — they behave exactly as
+    // before. No existing table's data is deleted.
+    this.version(19)
+      .stores({})
+      .upgrade(async (tx) => {
+        await tx
+          .table('dps')
+          .toCollection()
+          .modify(
+            (
+              d: Omit<Dps, 'openingInstallmentsPaid' | 'openingDepositedAmount' | 'openingInterestEarned'> & {
+                openingInstallmentsPaid?: number
+                openingDepositedAmount?: number
+                openingInterestEarned?: number
+              }
+            ) => {
+              if (d.openingInstallmentsPaid === undefined) d.openingInstallmentsPaid = 0
+              if (d.openingDepositedAmount === undefined) d.openingDepositedAmount = 0
+              if (d.openingInterestEarned === undefined) d.openingInterestEarned = 0
+            }
+          )
+
+        await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
+          schemaVersion: 19,
           lastMigrationAt: Date.now(),
           updatedAt: Date.now(),
         })

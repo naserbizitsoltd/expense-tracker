@@ -8,6 +8,7 @@ import { useAccount } from '../useAccounts'
 import { useAccountTransactions } from '../useAccountTransactions'
 import { AccountTransactionRow } from '../components/AccountTransactionRow'
 import { accountRepository } from '@/db'
+import { deleteTransaction } from '@/services/transactionService'
 import { getAccountIcon } from '../accountConfig'
 import { formatAmount } from '@/lib/money'
 
@@ -28,6 +29,7 @@ export function AccountDetailsPage({ accountId, onBack }: AccountDetailsPageProp
   const [editOpen, setEditOpen] = useState(false)
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null)
   const transactionCount: number | null = isTransactionsLoading ? null : transactionItems.length
 
   if (isLoading) {
@@ -69,6 +71,17 @@ export function AccountDetailsPage({ accountId, onBack }: AccountDetailsPageProp
     }
   }
 
+  async function confirmDeleteTransaction() {
+    if (!transactionToDelete) return
+    try {
+      await deleteTransaction(transactionToDelete)
+      showToast('Transaction deleted', 'success')
+    } catch {
+      showToast('Could not delete the transaction. Please try again.', 'error')
+    } finally {
+      setTransactionToDelete(null)
+    }
+  }
   return (
     <AppShell
       title={acc.name}
@@ -151,7 +164,11 @@ export function AccountDetailsPage({ accountId, onBack }: AccountDetailsPageProp
           {!isTransactionsLoading && transactionItems.length > 0 && (
             <Card padding="sm" className="flex flex-col divide-y divide-border">
               {transactionItems.map((item) => (
-                <AccountTransactionRow key={item.transaction.id} {...item} />
+                <AccountTransactionRow
+                  key={item.transaction.id}
+                  {...item}
+                  onDelete={() => setTransactionToDelete(item.transaction.id)}
+                />
               ))}
             </Card>
           )}
@@ -198,6 +215,16 @@ export function AccountDetailsPage({ accountId, onBack }: AccountDetailsPageProp
         onConfirm={deleteAccount}
         title="Delete this account?"
         description="This account has no transaction history, so it can be safely deleted. This cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+      />
+
+      <ConfirmationDialog
+        open={transactionToDelete !== null}
+        onClose={() => setTransactionToDelete(null)}
+        onConfirm={confirmDeleteTransaction}
+        title="Delete this transaction?"
+        description="Deleting this transaction will reverse its effect on your account balance. This cannot be undone."
         confirmLabel="Delete"
         variant="danger"
       />

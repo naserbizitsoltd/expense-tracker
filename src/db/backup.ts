@@ -34,6 +34,7 @@ const BACKUP_TABLES = [
   'dpsPayouts',
   'fdrPayouts',
   'goalTransactions',
+  'notificationLog',
   'appSettings',
   'metadata',
 ] as const

@@ -26,6 +26,12 @@ export interface CreateDpsInput {
   startDate: number
   maturityDate?: number | null
   notes?: string
+  // Opening snapshot for a DPS that already exists in real life — see
+  // Dps.openingInstallmentsPaid/openingDepositedAmount/openingInterestEarned.
+  // All default to 0, which is exactly today's "brand-new DPS" behavior.
+  openingInstallmentsPaid?: number
+  openingDepositedAmount?: number
+  openingInterestEarned?: number
 }
 
 export interface ContributeToDpsInput {
@@ -36,11 +42,17 @@ export interface ContributeToDpsInput {
   notes?: string
 }
 
-/** Sum of actual contribution records for one DPS — never derived from the schedule. */
+/**
+ * Sum of actual contribution records for one DPS, plus whatever was
+ * already deposited before it was entered into the app (see
+ * Dps.openingDepositedAmount) — never derived from the schedule.
+ */
 export async function getDpsDeposited(dpsId: string): Promise<{ total: number; count: number }> {
   try {
+    const dps = await db.dps.get(dpsId)
     const contributions = await db.dpsContributions.where('dpsId').equals(dpsId).toArray()
-    return { total: contributions.reduce((sum, c) => sum + c.amount, 0), count: contributions.length }
+    const openingDeposited = dps?.openingDepositedAmount ?? 0
+    return { total: openingDeposited + contributions.reduce((sum, c) => sum + c.amount, 0), count: contributions.length }
   } catch (error) {
     throw toAppDbError(error)
   }
@@ -50,9 +62,15 @@ export async function getDpsDeposited(dpsId: string): Promise<{ total: number; c
 export async function getDpsDepositedMany(dpsIds: string[]): Promise<Record<string, { total: number; count: number }>> {
   try {
     if (dpsIds.length === 0) return {}
-    const allContributions = await db.dpsContributions.where('dpsId').anyOf(dpsIds).toArray()
+    const [allDps, allContributions] = await Promise.all([
+      db.dps.bulkGet(dpsIds),
+      db.dpsContributions.where('dpsId').anyOf(dpsIds).toArray(),
+    ])
     const result: Record<string, { total: number; count: number }> = {}
     for (const id of dpsIds) result[id] = { total: 0, count: 0 }
+    for (const dps of allDps) {
+      if (dps) result[dps.id].total += dps.openingDepositedAmount
+    }
     for (const c of allContributions) {
       result[c.dpsId].total += c.amount
       result[c.dpsId].count += 1
@@ -64,7 +82,22 @@ export async function getDpsDepositedMany(dpsIds: string[]): Promise<Record<stri
 }
 
 export async function createDps(input: CreateDpsInput): Promise<Dps> {
-  const { name, institution, referenceNumber = null, accountId, monthlyInstallment, currency, interestRate = null, tenureMonths, startDate, maturityDate = null, notes } = input
+  const {
+    name,
+    institution,
+    referenceNumber = null,
+    accountId,
+    monthlyInstallment,
+    currency,
+    interestRate = null,
+    tenureMonths,
+    startDate,
+    maturityDate = null,
+    notes,
+    openingInstallmentsPaid = 0,
+    openingDepositedAmount = 0,
+    openingInterestEarned = 0,
+  } = input
 
   if (!name.trim()) throw new AppDbError('INVALID_DATA', 'DPS name is required.')
   if (!Number.isInteger(monthlyInstallment) || monthlyInstallment <= 0) {
@@ -72,6 +105,18 @@ export async function createDps(input: CreateDpsInput): Promise<Dps> {
   }
   if (!Number.isInteger(tenureMonths) || tenureMonths <= 0) {
     throw new AppDbError('INVALID_DATA', 'Number of installments must be a positive whole number.')
+  }
+  if (!Number.isInteger(openingInstallmentsPaid) || openingInstallmentsPaid < 0) {
+    throw new AppDbError('INVALID_DATA', 'Installments already paid must be a non-negative whole number.')
+  }
+  if (openingInstallmentsPaid > tenureMonths) {
+    throw new AppDbError('INVALID_DATA', 'Installments already paid cannot exceed the total number of installments.')
+  }
+  if (!Number.isInteger(openingDepositedAmount) || openingDepositedAmount < 0) {
+    throw new AppDbError('INVALID_DATA', 'Amount already deposited must be a non-negative integer in the smallest currency unit.')
+  }
+  if (!Number.isInteger(openingInterestEarned) || openingInterestEarned < 0) {
+    throw new AppDbError('INVALID_DATA', 'Interest already accumulated must be a non-negative integer in the smallest currency unit.')
   }
 
   try {
@@ -92,8 +137,13 @@ export async function createDps(input: CreateDpsInput): Promise<Dps> {
       tenureMonths,
       startDate,
       maturityDate,
-      status: 'active',
+      // An existing DPS whose opening installments already cover the
+      // full tenure is already complete the moment it's created.
+      status: openingInstallmentsPaid >= tenureMonths ? 'completed' : 'active',
       notes: notes?.trim() ?? '',
+      openingInstallmentsPaid,
+      openingDepositedAmount,
+      openingInterestEarned,
       createdAt: now,
       updatedAt: now,
     }
@@ -193,13 +243,13 @@ export async function contributeToDps(input: ContributeToDpsInput): Promise<DpsC
         await db.dpsContributions.add(contribution)
 
         // Fully scheduled once every installment has an actual
-        // contribution record — count, not an amount-derived guess,
-        // since contributions can be partial.
+        // contribution record, counting whatever was already paid
+        // before this DPS was entered into the app — not an
+        // amount-derived guess, since contributions can be partial.
         const contributionCount = await db.dpsContributions.where('dpsId').equals(dpsId).count()
-        if (contributionCount >= dps.tenureMonths && dps.status === 'active') {
+        if (dps.openingInstallmentsPaid + contributionCount >= dps.tenureMonths && dps.status === 'active') {
           await db.dps.update(dpsId, { status: 'completed', updatedAt: now })
         }
-
         return contribution
       }
     )

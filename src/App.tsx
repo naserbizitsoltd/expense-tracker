@@ -4,6 +4,8 @@ import { ToastProvider, EmptyState } from '@/components/ui'
 import { PwaStatusLayer } from '@/components/pwa/PwaStatusLayer'
 import { AppShell } from '@/layouts/AppShell'
 import { RecurringDueBanner } from '@/features/recurring/components/RecurringDueBanner'
+import { NotificationRunner } from '@/features/notifications/components/NotificationRunner'
+import { SettingsPage } from '@/features/settings/pages/SettingsPage'
 import { BottomNav } from '@/layouts/BottomNav'
 import { AccountsPage } from '@/features/accounts/pages/AccountsPage'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
@@ -21,6 +23,7 @@ import { LoanPage } from '@/features/loans/pages/LoanPage'
 import { DpsPage } from '@/features/dps/pages/DpsPage'
 import { FdrPage } from '@/features/fdr/pages/FdrPage'
 import { DepositsOverviewPage } from '@/features/deposits/pages/DepositsOverviewPage'
+
 type NavKey = 'home' | 'transactions' | 'accounts' | 'reports' | 'more'
 type PlaceholderNavKey = Exclude<NavKey, 'accounts' | 'transactions' | 'more' | 'home'>
 
@@ -41,17 +44,19 @@ function ComingSoonScreen({ navKey, onNavChange }: { navKey: PlaceholderNavKey; 
 
 function AppContent() {
   const [activeNav, setActiveNav] = useState<NavKey>('accounts')
-    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
   const [showCategories, setShowCategories] = useState(false)
-    const [showRecurring, setShowRecurring] = useState(false)
-    const [showBudgets, setShowBudgets] = useState(false)
-    const [showGoals, setShowGoals] = useState(false)
-        const [showCreditCards, setShowCreditCards] = useState(false)
+  const [showRecurring, setShowRecurring] = useState(false)
+  const [showBudgets, setShowBudgets] = useState(false)
+  const [showGoals, setShowGoals] = useState(false)
+  const [showCreditCards, setShowCreditCards] = useState(false)
   const [showDebitCards, setShowDebitCards] = useState(false)
-        const [showLoans, setShowLoans] = useState(false)
-    const [showDps, setShowDps] = useState(false)
+  const [showLoans, setShowLoans] = useState(false)
+  const [showDps, setShowDps] = useState(false)
   const [showFdr, setShowFdr] = useState(false)
   const [showDeposits, setShowDeposits] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+
   // Home tab - central dashboard
   if (activeNav === 'home') {
     if (selectedAccountId) {
@@ -111,7 +116,7 @@ function AppContent() {
 
   // Transactions tab - shows expense list
   if (activeNav === 'transactions') {
-        return <TransactionsPage />
+    return <TransactionsPage activeNav={activeNav} onNavChange={(key) => setActiveNav(key as NavKey)} />
   }
 
   // Reports tab - financial analysis
@@ -119,8 +124,7 @@ function AppContent() {
     return <ReportsPage activeNav={activeNav} onNavChange={(key) => setActiveNav(key as NavKey)} />
   }
 
-      // More tab - shows the More menu, Category Management, Recurring Transactions, or Budgets
-    // More tab - shows the More menu, Category Management, Recurring Transactions, Budgets, or Goals
+  // More tab - shows the More menu, Category Management, Recurring Transactions, Budgets, or Goals
   if (activeNav === 'more') {
     if (showCategories) {
       return <CategoriesPage onBack={() => setShowCategories(false)} />
@@ -131,19 +135,19 @@ function AppContent() {
     if (showBudgets) {
       return <BudgetPage onBack={() => setShowBudgets(false)} />
     }
-        if (showGoals) {
+    if (showGoals) {
       return <GoalPage onBack={() => setShowGoals(false)} />
     }
-        if (showCreditCards) {
+    if (showCreditCards) {
       return <CreditCardsPage onBack={() => setShowCreditCards(false)} />
     }
-        if (showDebitCards) {
+    if (showDebitCards) {
       return <DebitCardsPage onBack={() => setShowDebitCards(false)} />
     }
-        if (showLoans) {
+    if (showLoans) {
       return <LoanPage onBack={() => setShowLoans(false)} />
     }
-                if (showDps) {
+    if (showDps) {
       return <DpsPage onBack={() => setShowDps(false)} />
     }
     if (showFdr) {
@@ -164,6 +168,9 @@ function AppContent() {
         />
       )
     }
+    if (showSettings) {
+      return <SettingsPage onBack={() => setShowSettings(false)} />
+    }
     return (
       <MoreMenuPage
         activeNav={activeNav}
@@ -178,9 +185,11 @@ function AppContent() {
         onOpenDps={() => setShowDps(true)}
         onOpenFdr={() => setShowFdr(true)}
         onOpenDeposits={() => setShowDeposits(true)}
+        onOpenSettings={() => setShowSettings(true)}
       />
     )
   }
+
   // Remaining tab (reports) shows Coming Soon
   return <ComingSoonScreen navKey={activeNav as PlaceholderNavKey} onNavChange={setActiveNav} />
 }
@@ -190,8 +199,10 @@ function App() {
     <ToastProvider>
       <PwaStatusLayer />
       <RecurringDueBanner />
+      <NotificationRunner />
       <AppContent />
     </ToastProvider>
   )
 }
+
 export default App

@@ -9,6 +9,7 @@ import { CategoryIcon } from '@/lib/lucideIcon'
 import { parseAmountInput, currencySymbol } from '@/lib/money'
 import { createDps } from '@/services/dpsService'
 import { getUserMessage } from '@/db'
+import { cn } from '@/lib/cn'
 import { Button, CurrencyInput, Input, useToast } from '@/components/ui'
 import type { Account } from '@/types/entities'
 import type { CurrencyCode } from '@/types/money'
@@ -38,6 +39,7 @@ export function DpsForm({ onDone }: DpsFormProps) {
   const currency: CurrencyCode = selectedAccount?.currency ?? 'BDT'
   const startDate = watch('startDate')
   const tenureMonthsInput = watch('tenureMonthsInput')
+  const mode = watch('mode')
 
   // Auto-fills maturity date from start date + installment count, but
   // only while the user hasn't typed their own — matches the "remains
@@ -68,6 +70,21 @@ export function DpsForm({ onDone }: DpsFormProps) {
 
     const interestRate = values.interestRateInput ? Number(values.interestRateInput) : null
 
+    let openingInstallmentsPaid = 0
+    let openingDepositedAmount = 0
+    let openingInterestEarned = 0
+    if (values.mode === 'existing') {
+      openingInstallmentsPaid = Number(values.openingInstallmentsPaidInput)
+      const parsedDeposited = parseAmountInput(values.openingDepositedAmountInput ?? '', selectedAccount.currency)
+      if (parsedDeposited === null) return
+      openingDepositedAmount = parsedDeposited
+      if (values.openingInterestEarnedInput) {
+        const parsedInterest = parseAmountInput(values.openingInterestEarnedInput, selectedAccount.currency)
+        if (parsedInterest === null) return
+        openingInterestEarned = parsedInterest
+      }
+    }
+
     setSubmitting(true)
     try {
       await createDps({
@@ -82,8 +99,11 @@ export function DpsForm({ onDone }: DpsFormProps) {
         startDate: startDateMs,
         maturityDate: maturityDateMs,
         notes: values.notes,
+        openingInstallmentsPaid,
+        openingDepositedAmount,
+        openingInterestEarned,
       })
-      showToast('DPS created', 'success')
+      showToast(values.mode === 'existing' ? 'Existing DPS added' : 'DPS created', 'success')
       onDone()
     } catch (error) {
       showToast(getUserMessage(error), 'error')
@@ -94,6 +114,30 @@ export function DpsForm({ onDone }: DpsFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex max-h-[70vh] flex-col gap-5 overflow-y-auto pb-1 pr-0.5">
+      <div>
+        <label className="mb-1.5 block text-sm font-medium text-foreground">DPS type</label>
+        <div className="grid grid-cols-2 gap-2.5">
+          {(['new', 'existing'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setValue('mode', m)}
+              className={cn(
+                'rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-colors',
+                mode === m ? 'border-primary bg-primary-muted text-foreground' : 'border-border bg-surface-elevated text-muted-foreground'
+              )}
+            >
+              {m === 'new' ? 'New DPS' : 'Existing DPS'}
+            </button>
+          ))}
+        </div>
+        {mode === 'existing' && (
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Already have this DPS running? Enter its current state below — past installments won't be re-created.
+          </p>
+        )}
+      </div>
+
       <Input label="DPS name" placeholder="e.g. DBBL DPS" error={errors.name?.message} {...register('name')} />
 
       <Input label="Bank / provider" placeholder="e.g. Dutch-Bangla Bank" error={errors.institution?.message} {...register('institution')} />
@@ -178,6 +222,46 @@ export function DpsForm({ onDone }: DpsFormProps) {
         error={errors.interestRateInput?.message}
         {...register('interestRateInput')}
       />
+
+      {mode === 'existing' && (
+        <div className="flex flex-col gap-5 rounded-2xl border border-border bg-surface-elevated p-3.5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current state</p>
+
+          <Input
+            label="Installments already paid"
+            placeholder="e.g. 8"
+            inputMode="numeric"
+            error={errors.openingInstallmentsPaidInput?.message}
+            {...register('openingInstallmentsPaidInput')}
+          />
+
+          <Controller
+            name="openingDepositedAmountInput"
+            control={control}
+            render={({ field }) => (
+              <CurrencyInput
+                label="Amount already deposited"
+                currencySymbol={currencySymbol(currency)}
+                error={errors.openingDepositedAmountInput?.message}
+                {...field}
+              />
+            )}
+          />
+
+          <Controller
+            name="openingInterestEarnedInput"
+            control={control}
+            render={({ field }) => (
+              <CurrencyInput
+                label="Interest already accumulated (optional)"
+                currencySymbol={currencySymbol(currency)}
+                error={errors.openingInterestEarnedInput?.message}
+                {...field}
+              />
+            )}
+          />
+        </div>
+      )}
 
       <Input label="Notes (optional)" placeholder="Anything worth remembering" error={errors.notes?.message} {...register('notes')} />
 

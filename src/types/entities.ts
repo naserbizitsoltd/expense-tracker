@@ -150,6 +150,15 @@ export interface Dps {
   maturityDate: number | null
   status: DpsStatus
   notes: string
+  // Opening snapshot for a DPS that already existed in real life before
+  // being entered into the app — mirrors Account.openingBalance. Never
+  // backed by a ledger movement or a fake DpsContribution record; it is
+  // simply added on top of the real (derived) contribution total/count
+  // wherever those are computed (see dpsService/dpsProgressService).
+  // All three default to 0 for a brand-new DPS.
+  openingInstallmentsPaid: number // integer, >= 0, <= tenureMonths
+  openingDepositedAmount: number // integer, smallest unit, >= 0
+  openingInterestEarned: number // integer, smallest unit, >= 0 — preserved as-is, never recalculated
   createdAt: number
   updatedAt: number
 }
@@ -336,7 +345,29 @@ export interface AppSettings {
   defaultCurrency: CurrencyCode
   locale: string
   theme: 'light' | 'dark' | 'system'
+  notificationsEnabled: boolean // master on/off for the reminder system — see services/notificationService.ts
+  reminderOffsetDays: number[] // e.g. [1, 3, 7] — how many days before a due/maturity/target date a reminder should fire
   updatedAt: number
+}
+
+// Which financial entity a reminder was generated for.
+export type ReminderType = 'recurring' | 'dps' | 'loan' | 'fdr' | 'goal'
+
+// One row per reminder actually surfaced to the user (browser
+// notification fired and/or shown in the in-app Notification Center).
+// Keyed so the same entity/due-date/offset combination is never shown
+// twice, even across app restarts — see
+// services/notificationService.reminderKey and
+// features/notifications/useReminders.ts. Purely local bookkeeping;
+// never feeds into any financial calculation.
+export interface NotificationLogEntry {
+  id: string // reminderKey(type, entityId, dueDate, offsetDays) — also the dedupe key
+  type: ReminderType
+  entityId: string // id of the RecurringTransaction/Dps/Loan/Fdr/Goal this reminder is about
+  title: string
+  body: string
+  dueDate: number // epoch ms of the underlying due/maturity/target date this reminder relates to
+  shownAt: number
 }
 
 // Singleton row, fixed id DB_METADATA_ID (see src/db/id.ts)

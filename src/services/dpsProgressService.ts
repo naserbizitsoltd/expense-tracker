@@ -27,7 +27,11 @@ export interface DpsProgress {
 }
 
 export function getDpsProgress(dps: Dps, contributionCount: number): DpsProgress {
-  const paidInstallments = Math.max(0, contributionCount)
+  // Paid installments = real contribution records PLUS whatever was
+  // already paid before this DPS was entered into the app (see
+  // Dps.openingInstallmentsPaid) — an existing DPS's progress must
+  // reflect its real-world state from the moment it's created.
+  const paidInstallments = Math.max(0, dps.openingInstallmentsPaid + contributionCount)
   const remainingInstallments = Math.max(0, dps.tenureMonths - paidInstallments)
   const percentComplete = dps.tenureMonths > 0 ? Math.min(100, Math.round((paidInstallments / dps.tenureMonths) * 100)) : 0
   const isFullyScheduled = remainingInstallments === 0

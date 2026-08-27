@@ -1,4 +1,4 @@
-import { Tags, ChevronRight, Repeat, PiggyBank, Target, CreditCard, Landmark, HandCoins, Wallet2, Lock, Layers } from 'lucide-react'
+import { Tags, ChevronRight, Repeat, PiggyBank, Target, CreditCard, Landmark, HandCoins, Wallet2, Lock, Layers, Bell } from 'lucide-react'
 import { AppShell } from '@/layouts/AppShell'
 import { BottomNav } from '@/layouts/BottomNav'
 import { BackupRestoreSection } from '@/features/backup/components/BackupRestoreSection'
@@ -16,6 +16,7 @@ interface MoreMenuPageProps {
   onOpenDps: () => void
   onOpenFdr: () => void
   onOpenDeposits: () => void
+  onOpenSettings: () => void
 }
 export function MoreMenuPage({
   activeNav,
@@ -30,6 +31,7 @@ export function MoreMenuPage({
   onOpenDps,
   onOpenFdr,
   onOpenDeposits,
+  onOpenSettings,
 }: MoreMenuPageProps)  {
   return (
     <AppShell title="More" bottomNav={<BottomNav active={activeNav} onChange={onNavChange} />}>
@@ -162,7 +164,21 @@ export function MoreMenuPage({
             <p className="text-sm font-semibold text-foreground">Savings & Deposits</p>
             <p className="text-xs text-muted-foreground">A unified overview of your DPS and FDR</p>
           </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
+
+        <button
+          onClick={onOpenSettings}
+          className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left transition-colors active:bg-surface-elevated"
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-muted text-primary">
+            <Bell className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground">Settings</p>
+            <p className="text-xs text-muted-foreground">Notifications & reminders</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </button>
 
         <BackupRestoreSection />

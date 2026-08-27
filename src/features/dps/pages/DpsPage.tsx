@@ -180,6 +180,13 @@ function DpsDetails({ dpsId, onBack }: { dpsId: string; onBack: () => void }) {
 
         <BalanceCard label="Total Deposited" amount={formatAmount(totalDeposited, dps.currency)} />
 
+        {dps.openingInterestEarned > 0 && (
+          <BalanceCard
+            label="Current Value (incl. accumulated interest)"
+            amount={formatAmount(totalDeposited + dps.openingInterestEarned, dps.currency)}
+          />
+        )}
+
         <Card>
           <div className="flex items-baseline justify-between">
             <p className="text-sm font-semibold tabular-nums text-foreground">
@@ -231,6 +238,9 @@ function DpsDetails({ dpsId, onBack }: { dpsId: string; onBack: () => void }) {
             value={progress?.nextContributionDate ? format(progress.nextContributionDate, 'MMM d, yyyy') : '—'}
           />
           <DetailRow label="Interest / profit rate" value={dps.interestRate != null ? `${dps.interestRate}%` : '—'} />
+          {dps.openingInterestEarned > 0 && (
+            <DetailRow label="Interest accumulated so far" value={formatAmount(dps.openingInterestEarned, dps.currency)} />
+          )}
                     <DetailRow label="Status" value={maturityStatusLabel} />
         </Card>
 
@@ -304,7 +314,7 @@ function DpsDetails({ dpsId, onBack }: { dpsId: string; onBack: () => void }) {
               </>
             )}
           </Button>
-          {contributions.length === 0 && (
+          {contributions.length === 0 && dps.openingInstallmentsPaid === 0 && dps.openingDepositedAmount === 0 && (
             <Button variant="danger" onClick={() => setDeleteConfirmOpen(true)}>
               <Trash2 className="h-4 w-4" /> Delete DPS
             </Button>

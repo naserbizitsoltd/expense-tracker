@@ -511,56 +511,130 @@ async function updateCreditCardPayment(existing: Transaction, changes: Transacti
  * Deletes a transaction and every ledger entry it produced, atomically,
  * then recomputes the balance cache for every account it touched so
  * balances reflect the deletion immediately with no orphaned entries.
+ *
+ * A dps/loan/fdr-linked transaction is always paired 1:1 with an
+ * auditable record (DpsContribution/DpsPayout/LoanRepayment/FdrPayout)
+ * that back-references it via `transactionId`. Those totals/progress
+ * are always derived live from these rows (never cached), so deleting
+ * the transaction without deleting its paired record would leave the
+ * DPS/Loan/FDR still "counting" money that no longer actually moved —
+ * this removes that record too, and reverts a status that was only
+ * reached because of the now-reversed effect (e.g. a DPS that had
+ * flipped to 'completed'/'paid_out', or a loan that had closed).
  */
 export async function deleteTransaction(id: string): Promise<void> {
   try {
-    await db.transaction('rw', db.transactions, db.ledgerEntries, db.accounts, db.creditCards, async () => {
-      const existing = await db.transactions.get(id)
-      if (!existing) throw new AppDbError('NOT_FOUND', 'Transaction not found.')
+    await db.transaction(
+      'rw',
+      [
+        db.transactions,
+        db.ledgerEntries,
+        db.accounts,
+        db.creditCards,
+        db.dps,
+        db.dpsContributions,
+        db.dpsPayouts,
+        db.loans,
+        db.loanRepayments,
+        db.fdrs,
+        db.fdrPayouts,
+      ],
+      async () => {
+        const existing = await db.transactions.get(id)
+        if (!existing) throw new AppDbError('NOT_FOUND', 'Transaction not found.')
 
-      if (existing.type === 'credit_card') {
-        // Bill payment: reverse the real ledger entry against the source
-        // account, then give the outstanding balance back to the card —
-        // the exact inverse of payCreditCardBill.
-        const card = await db.creditCards.get(existing.creditCardId as string)
+        if (existing.type === 'credit_card') {
+          // Bill payment: reverse the real ledger entry against the source
+          // account, then give the outstanding balance back to the card —
+          // the exact inverse of payCreditCardBill.
+          const card = await db.creditCards.get(existing.creditCardId as string)
+          await db.ledgerEntries.where('transactionId').equals(id).delete()
+          await db.transactions.delete(id)
+          await reconcileAccountBalanceCache(existing.accountId)
+          if (card) {
+            await db.creditCards.update(card.id, {
+              outstandingBalance: card.outstandingBalance + existing.amount,
+              updatedAt: Date.now(),
+            })
+          }
+          return
+        }
+
+        if (existing.creditCardId) {
+          const card = await db.creditCards.get(existing.creditCardId)
+          await db.transactions.delete(id)
+          if (card) {
+            await db.creditCards.update(card.id, {
+              outstandingBalance: Math.max(0, card.outstandingBalance - existing.amount),
+              updatedAt: Date.now(),
+            })
+          }
+          return
+        }
+
+        // Captured before the join-table rows are removed below, so we
+        // know afterwards whether this transaction WAS a DPS/FDR payout.
+        const wasDpsPayout =
+          existing.type === 'dps' ? await db.dpsPayouts.where('transactionId').equals(id).first() : undefined
+        const wasFdrPayout =
+          existing.type === 'fdr' ? await db.fdrPayouts.where('transactionId').equals(id).first() : undefined
+
+        const accountIds = affectedAccountIds(existing.accountId, existing.toAccountId)
+
         await db.ledgerEntries.where('transactionId').equals(id).delete()
         await db.transactions.delete(id)
-        await reconcileAccountBalanceCache(existing.accountId)
-        if (card) {
-          await db.creditCards.update(card.id, {
-            outstandingBalance: card.outstandingBalance + existing.amount,
-            updatedAt: Date.now(),
-          })
+
+        // Remove the paired auditable record, if any — a no-op on any
+        // table where this transaction id isn't present.
+        await db.dpsContributions.where('transactionId').equals(id).delete()
+        await db.dpsPayouts.where('transactionId').equals(id).delete()
+        await db.loanRepayments.where('transactionId').equals(id).delete()
+        await db.fdrPayouts.where('transactionId').equals(id).delete()
+
+        if (existing.type === 'dps' && existing.relatedEntityId) {
+          const dps = await db.dps.get(existing.relatedEntityId)
+          if (dps) {
+            if (wasDpsPayout && dps.status === 'paid_out') {
+              await db.dps.update(dps.id, { status: 'completed', updatedAt: Date.now() })
+            } else if (!wasDpsPayout && dps.status === 'completed') {
+              const remainingCount = await db.dpsContributions.where('dpsId').equals(dps.id).count()
+              if (dps.openingInstallmentsPaid + remainingCount < dps.tenureMonths) {
+                await db.dps.update(dps.id, { status: 'active', updatedAt: Date.now() })
+              }
+            }
+          }
         }
-        return
-      }
 
-      if (existing.creditCardId) {
-        const card = await db.creditCards.get(existing.creditCardId)
-        await db.transactions.delete(id)
-        if (card) {
-          await db.creditCards.update(card.id, {
-            outstandingBalance: Math.max(0, card.outstandingBalance - existing.amount),
-            updatedAt: Date.now(),
-          })
+        if (existing.type === 'loan' && existing.relatedEntityId) {
+          const loan = await db.loans.get(existing.relatedEntityId)
+          if (loan && loan.status === 'closed') {
+            const remainingRepayments = await db.loanRepayments.where('loanId').equals(loan.id).toArray()
+            const alreadyRepaid = remainingRepayments.reduce((sum, r) => sum + r.amount, 0)
+            if (loan.principal - alreadyRepaid > 0) {
+              await db.loans.update(loan.id, { status: 'active', updatedAt: Date.now() })
+            }
+          }
         }
-        return
+
+        if (existing.type === 'fdr' && existing.relatedEntityId) {
+          const fdr = await db.fdrs.get(existing.relatedEntityId)
+          if (fdr && wasFdrPayout && fdr.status === 'paid_out') {
+            const stillHasPayout = await db.fdrPayouts.where('fdrId').equals(fdr.id).count()
+            if (stillHasPayout === 0) {
+              await db.fdrs.update(fdr.id, { status: 'active', updatedAt: Date.now() })
+            }
+          }
+        }
+
+        for (const accountId of accountIds) {
+          await reconcileAccountBalanceCache(accountId)
+        }
       }
-
-      const accountIds = affectedAccountIds(existing.accountId, existing.toAccountId)
-
-      await db.ledgerEntries.where('transactionId').equals(id).delete()
-      await db.transactions.delete(id)
-
-      for (const accountId of accountIds) {
-        await reconcileAccountBalanceCache(accountId)
-      }
-    })
+    )
   } catch (error) {
     throw toAppDbError(error)
   }
 }
-
 // Re-exported so callers that already have a raw TransactionType (e.g.
 // loading a row from the table) can check support before calling into
 // the engine, without importing from the validation module directly.

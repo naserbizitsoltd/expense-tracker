@@ -1,9 +1,30 @@
 import { format } from 'date-fns'
-import { ArrowLeftRight, CreditCard } from 'lucide-react'
+import { ArrowLeftRight, CreditCard, Trash2 } from 'lucide-react'
 import { CategoryIcon } from '@/lib/lucideIcon'
 import { formatAmount } from '@/lib/money'
 import { cn } from '@/lib/cn'
+import { IconButton } from '@/components/ui'
 import type { AccountTransactionItem } from '../useAccountTransactions'
+
+interface AccountTransactionRowProps extends AccountTransactionItem {
+  onDelete?: () => void
+}
+
+function DeleteAction({ onDelete }: { onDelete?: () => void }) {
+  if (!onDelete) return null
+  return (
+    <IconButton
+      aria-label="Delete transaction"
+      onClick={(e) => {
+        e.stopPropagation()
+        onDelete()
+      }}
+      className="shrink-0"
+    >
+      <Trash2 className="h-4 w-4" />
+    </IconButton>
+  )
+}
 
 export function AccountTransactionRow({
   transaction,
@@ -11,7 +32,8 @@ export function AccountTransactionRow({
   counterAccount,
   creditCard,
   direction,
-}: AccountTransactionItem) {
+  onDelete,
+}: AccountTransactionRowProps) {
   // Credit Card bill payment — clearly distinguished from an Expense:
   // its own icon/label, and it names the card being paid instead of a category.
   if (transaction.type === 'credit_card') {
@@ -31,6 +53,7 @@ export function AccountTransactionRow({
           {'\u2212'}
           {formatAmount(transaction.amount, transaction.currency)}
         </span>
+        <DeleteAction onDelete={onDelete} />
       </div>
     )
   }
@@ -52,12 +75,12 @@ export function AccountTransactionRow({
           {isOut ? '\u2212' : '+'}
           {formatAmount(transaction.amount, transaction.currency)}
         </span>
+        <DeleteAction onDelete={onDelete} />
       </div>
     )
   }
 
   const isIncome = transaction.type === 'income'
-
   return (
     <div className="flex items-center gap-3 px-1 py-3">
       <span
@@ -78,6 +101,7 @@ export function AccountTransactionRow({
         {isIncome ? '+' : '\u2212'}
         {formatAmount(transaction.amount, transaction.currency)}
       </span>
+      <DeleteAction onDelete={onDelete} />
     </div>
   )
 }
