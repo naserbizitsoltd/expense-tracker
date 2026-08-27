@@ -3,9 +3,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { categoryRepository, generateId } from '@/db'
 import { categoryFormSchema, type CategoryFormValues } from '../categorySchema'
-import { CATEGORY_COLORS, getCategoryIcon } from '../categoryConfig'
+import { getCategoryIcon } from '../categoryConfig'
 import { IconPicker } from './IconPicker'
-import { Button, Input, useToast } from '@/components/ui'
+import { Button, ColorPicker, DEFAULT_PICKER_COLORS, Input, useToast } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import type { Category, CategoryType } from '@/types/entities'
 
@@ -33,7 +33,7 @@ export function CategoryForm({ category, defaultType = 'expense', onDone }: Cate
       name: category?.name ?? '',
       type: category?.type ?? defaultType,
       icon: category?.icon ?? 'Tag',
-      color: category?.color ?? CATEGORY_COLORS[0],
+      color: category?.color ?? DEFAULT_PICKER_COLORS[0],
       description: category?.description ?? '',
     },
   })
@@ -141,21 +141,7 @@ export function CategoryForm({ category, defaultType = 'expense', onDone }: Cate
 
       <div className="flex flex-col gap-1.5">
         <p className="text-sm font-medium text-foreground">Color</p>
-        <div className="flex flex-wrap gap-2">
-          {CATEGORY_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setValue('color', c)}
-              aria-label={`Use color ${c}`}
-              className={cn(
-                'h-8 w-8 rounded-full border-2 transition-transform active:scale-90',
-                color === c ? 'border-foreground' : 'border-transparent'
-              )}
-              style={{ backgroundColor: c }}
-            />
-          ))}
-        </div>
+        <ColorPicker value={color} onChange={(c) => setValue('color', c)} />
       </div>
 
       <Button type="submit" size="lg" disabled={submitting} className="w-full">

@@ -6,13 +6,14 @@ import { AppShell } from '@/layouts/AppShell'
 import { RecurringDueBanner } from '@/features/recurring/components/RecurringDueBanner'
 import { NotificationRunner } from '@/features/notifications/components/NotificationRunner'
 import { SettingsPage } from '@/features/settings/pages/SettingsPage'
+import { ThemeApplier } from '@/features/settings/ThemeApplier'
 import { BottomNav } from '@/layouts/BottomNav'
 import { AccountsPage } from '@/features/accounts/pages/AccountsPage'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { ReportsPage } from '@/features/reports/pages/ReportsPage'
 import { AccountDetailsPage } from '@/features/accounts/pages/AccountDetailsPage'
 import { TransactionsPage } from '@/features/transactions/pages/TransactionsPage'
-import { MoreMenuPage } from '@/features/more/pages/MoreMenuPage'
+import { MoreDrawer } from '@/features/more/components/MoreDrawer'
 import { CategoriesPage } from '@/features/categories/pages/CategoriesPage'
 import { RecurringPage } from '@/features/recurring/pages/RecurringPage'
 import { BudgetPage } from '@/features/budgets/pages/BudgetPage'
@@ -40,11 +41,10 @@ function ComingSoonScreen({ navKey, onNavChange }: { navKey: PlaceholderNavKey; 
   )
 }
 
-// No placeholder tabs remain — every entry in NavKey now has a real screen above.
-
 function AppContent() {
-  const [activeNav, setActiveNav] = useState<NavKey>('accounts')
+  const [activeNav, setActiveNav] = useState<NavKey>('home')
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
+  const [moreDrawerOpen, setMoreDrawerOpen] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
   const [showRecurring, setShowRecurring] = useState(false)
   const [showBudgets, setShowBudgets] = useState(false)
@@ -57,46 +57,85 @@ function AppContent() {
   const [showDeposits, setShowDeposits] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
 
+  // "More" is now an overlay drawer, not a tab destination — intercept it
+  // here so every bottom nav still just wires onChange straight through.
+  function handleNavChange(key: string) {
+    if (key === 'more') {
+      setMoreDrawerOpen(true)
+      return
+    }
+    setActiveNav(key as NavKey)
+  }
+
+  // Full-screen pushed pages opened from the drawer. These replace the tab
+  // content entirely (back arrow, no bottom nav) — same as before, just no
+  // longer gated behind activeNav === 'more'.
+  if (showCategories) return <CategoriesPage onBack={() => setShowCategories(false)} />
+  if (showRecurring) return <RecurringPage onBack={() => setShowRecurring(false)} />
+  if (showBudgets) return <BudgetPage onBack={() => setShowBudgets(false)} />
+  if (showGoals) return <GoalPage onBack={() => setShowGoals(false)} />
+  if (showCreditCards) return <CreditCardsPage onBack={() => setShowCreditCards(false)} />
+  if (showDebitCards) return <DebitCardsPage onBack={() => setShowDebitCards(false)} />
+  if (showLoans) return <LoanPage onBack={() => setShowLoans(false)} />
+  if (showDps) return <DpsPage onBack={() => setShowDps(false)} />
+  if (showFdr) return <FdrPage onBack={() => setShowFdr(false)} />
+  if (showDeposits) {
+    return (
+      <DepositsOverviewPage
+        onBack={() => setShowDeposits(false)}
+        onOpenDps={() => {
+          setShowDeposits(false)
+          setShowDps(true)
+        }}
+        onOpenFdr={() => {
+          setShowDeposits(false)
+          setShowFdr(true)
+        }}
+      />
+    )
+  }
+  if (showSettings) return <SettingsPage onBack={() => setShowSettings(false)} />
+
+  const drawer = (
+    <MoreDrawer
+      open={moreDrawerOpen}
+      onClose={() => setMoreDrawerOpen(false)}
+      onOpenCategories={() => setShowCategories(true)}
+      onOpenRecurring={() => setShowRecurring(true)}
+      onOpenBudgets={() => setShowBudgets(true)}
+      onOpenGoals={() => setShowGoals(true)}
+      onOpenCreditCards={() => setShowCreditCards(true)}
+      onOpenDebitCards={() => setShowDebitCards(true)}
+      onOpenLoans={() => setShowLoans(true)}
+      onOpenDps={() => setShowDps(true)}
+      onOpenFdr={() => setShowFdr(true)}
+      onOpenDeposits={() => setShowDeposits(true)}
+      onOpenSettings={() => setShowSettings(true)}
+    />
+  )
+
   // Home tab - central dashboard
   if (activeNav === 'home') {
     if (selectedAccountId) {
       return <AccountDetailsPage accountId={selectedAccountId} onBack={() => setSelectedAccountId(null)} />
     }
     return (
-      <DashboardPage
-        activeNav={activeNav}
-        onNavChange={(key) => setActiveNav(key as NavKey)}
-        onOpenAccount={setSelectedAccountId}
-        onOpenTransactions={() => setActiveNav('transactions')}
-        onOpenLoans={() => {
-          setActiveNav('more')
-          setShowLoans(true)
-        }}
-        onOpenDps={() => {
-          setActiveNav('more')
-          setShowDps(true)
-        }}
-        onOpenFdr={() => {
-          setActiveNav('more')
-          setShowFdr(true)
-        }}
-        onOpenBudgets={() => {
-          setActiveNav('more')
-          setShowBudgets(true)
-        }}
-        onOpenGoals={() => {
-          setActiveNav('more')
-          setShowGoals(true)
-        }}
-        onOpenCreditCards={() => {
-          setActiveNav('more')
-          setShowCreditCards(true)
-        }}
-        onOpenDebitCards={() => {
-          setActiveNav('more')
-          setShowDebitCards(true)
-        }}
-      />
+      <>
+        <DashboardPage
+          activeNav={activeNav}
+          onNavChange={handleNavChange}
+          onOpenAccount={setSelectedAccountId}
+          onOpenTransactions={() => setActiveNav('transactions')}
+          onOpenLoans={() => setShowLoans(true)}
+          onOpenDps={() => setShowDps(true)}
+          onOpenFdr={() => setShowFdr(true)}
+          onOpenBudgets={() => setShowBudgets(true)}
+          onOpenGoals={() => setShowGoals(true)}
+          onOpenCreditCards={() => setShowCreditCards(true)}
+          onOpenDebitCards={() => setShowDebitCards(true)}
+        />
+        {drawer}
+      </>
     )
   }
 
@@ -106,97 +145,47 @@ function AppContent() {
       return <AccountDetailsPage accountId={selectedAccountId} onBack={() => setSelectedAccountId(null)} />
     }
     return (
-      <AccountsPage
-        activeNav={activeNav}
-        onNavChange={(key) => setActiveNav(key as NavKey)}
-        onOpenAccount={setSelectedAccountId}
-      />
+      <>
+        <AccountsPage activeNav={activeNav} onNavChange={handleNavChange} onOpenAccount={setSelectedAccountId} />
+        {drawer}
+      </>
     )
   }
 
   // Transactions tab - shows expense list
   if (activeNav === 'transactions') {
-    return <TransactionsPage activeNav={activeNav} onNavChange={(key) => setActiveNav(key as NavKey)} />
+    return (
+      <>
+        <TransactionsPage activeNav={activeNav} onNavChange={handleNavChange} />
+        {drawer}
+      </>
+    )
   }
 
   // Reports tab - financial analysis
   if (activeNav === 'reports') {
-    return <ReportsPage activeNav={activeNav} onNavChange={(key) => setActiveNav(key as NavKey)} />
-  }
-
-  // More tab - shows the More menu, Category Management, Recurring Transactions, Budgets, or Goals
-  if (activeNav === 'more') {
-    if (showCategories) {
-      return <CategoriesPage onBack={() => setShowCategories(false)} />
-    }
-    if (showRecurring) {
-      return <RecurringPage onBack={() => setShowRecurring(false)} />
-    }
-    if (showBudgets) {
-      return <BudgetPage onBack={() => setShowBudgets(false)} />
-    }
-    if (showGoals) {
-      return <GoalPage onBack={() => setShowGoals(false)} />
-    }
-    if (showCreditCards) {
-      return <CreditCardsPage onBack={() => setShowCreditCards(false)} />
-    }
-    if (showDebitCards) {
-      return <DebitCardsPage onBack={() => setShowDebitCards(false)} />
-    }
-    if (showLoans) {
-      return <LoanPage onBack={() => setShowLoans(false)} />
-    }
-    if (showDps) {
-      return <DpsPage onBack={() => setShowDps(false)} />
-    }
-    if (showFdr) {
-      return <FdrPage onBack={() => setShowFdr(false)} />
-    }
-    if (showDeposits) {
-      return (
-        <DepositsOverviewPage
-          onBack={() => setShowDeposits(false)}
-          onOpenDps={() => {
-            setShowDeposits(false)
-            setShowDps(true)
-          }}
-          onOpenFdr={() => {
-            setShowDeposits(false)
-            setShowFdr(true)
-          }}
-        />
-      )
-    }
-    if (showSettings) {
-      return <SettingsPage onBack={() => setShowSettings(false)} />
-    }
     return (
-      <MoreMenuPage
-        activeNav={activeNav}
-        onNavChange={(key) => setActiveNav(key as NavKey)}
-        onOpenCategories={() => setShowCategories(true)}
-        onOpenRecurring={() => setShowRecurring(true)}
-        onOpenBudgets={() => setShowBudgets(true)}
-        onOpenGoals={() => setShowGoals(true)}
-        onOpenCreditCards={() => setShowCreditCards(true)}
-        onOpenDebitCards={() => setShowDebitCards(true)}
-        onOpenLoans={() => setShowLoans(true)}
-        onOpenDps={() => setShowDps(true)}
-        onOpenFdr={() => setShowFdr(true)}
-        onOpenDeposits={() => setShowDeposits(true)}
-        onOpenSettings={() => setShowSettings(true)}
-      />
+      <>
+        <ReportsPage activeNav={activeNav} onNavChange={handleNavChange} />
+        {drawer}
+      </>
     )
   }
 
-  // Remaining tab (reports) shows Coming Soon
-  return <ComingSoonScreen navKey={activeNav as PlaceholderNavKey} onNavChange={setActiveNav} />
+  // Unreachable in practice (every real NavKey is handled above) but kept
+  // as a safe fallback, same as before.
+  return (
+    <>
+      <ComingSoonScreen navKey={activeNav as PlaceholderNavKey} onNavChange={setActiveNav} />
+      {drawer}
+    </>
+  )
 }
 
 function App() {
   return (
     <ToastProvider>
+      <ThemeApplier />
       <PwaStatusLayer />
       <RecurringDueBanner />
       <NotificationRunner />

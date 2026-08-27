@@ -5,10 +5,10 @@ import { cn } from '@/lib/cn'
 import type { BudgetWithProgress } from '../useBudgets'
 
 const STATUS_STYLES: Record<BudgetWithProgress['status'], { bar: string; badge: string; label: string }> = {
-  safe: { bar: 'bg-emerald-400', badge: 'bg-emerald-400/15 text-emerald-300', label: 'Safe' },
-  warning: { bar: 'bg-amber-400', badge: 'bg-amber-400/15 text-amber-300', label: 'Warning' },
-  near_limit: { bar: 'bg-orange-400', badge: 'bg-orange-400/15 text-orange-300', label: 'Near limit' },
-  exceeded: { bar: 'bg-rose-400', badge: 'bg-rose-400/15 text-rose-300', label: 'Exceeded' },
+  safe: { bar: 'bg-success', badge: 'bg-success/10 text-success border border-success/20', label: 'Safe' },
+  warning: { bar: 'bg-warning', badge: 'bg-warning/10 text-warning border border-warning/20', label: 'Warning' },
+  near_limit: { bar: 'bg-warning', badge: 'bg-danger/10 text-danger border border-danger/20', label: 'Near limit' },
+  exceeded: { bar: 'bg-danger', badge: 'bg-danger/10 text-danger border border-danger/20', label: 'Exceeded' },
 }
 
 export function BudgetCard({ item, onClick }: { item: BudgetWithProgress; onClick: () => void }) {
@@ -20,7 +20,7 @@ export function BudgetCard({ item, onClick }: { item: BudgetWithProgress; onClic
   return (
     <button
       onClick={onClick}
-      className="flex w-full flex-col gap-3 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-4 text-left active:bg-white/5"
+      className="flex w-full flex-col gap-3 rounded-2xl border border-border bg-surface px-4 py-4 text-left active:bg-surface-elevated"
     >
       <div className="flex items-center gap-3">
         <span
@@ -30,8 +30,8 @@ export function BudgetCard({ item, onClick }: { item: BudgetWithProgress; onClic
           <CategoryIcon name={categoryIcon ?? 'wallet'} size={18} color={categoryColor ?? '#999'} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-white">{displayName}</p>
-          <p className="truncate text-xs capitalize text-white/40">
+          <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
+          <p className="truncate text-xs capitalize text-muted-foreground">
             {budget.period} budget{!budget.isActive ? ' · Paused' : ''}
           </p>
         </div>
@@ -40,18 +40,18 @@ export function BudgetCard({ item, onClick }: { item: BudgetWithProgress; onClic
         </span>
       </div>
 
-      <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-surface-elevated">
         <div className={cn('h-full rounded-full transition-all duration-300', style.bar)} style={{ width: `${barWidth}%` }} />
       </div>
 
       <div className="flex items-center justify-between text-xs">
-        <span className="text-white/60">
+        <span className="text-muted-foreground">
           {formatAmount(spent, budget.currency)} / {formatAmount(budget.amount, budget.currency)}
         </span>
-        <span className="text-white/40">{percentUsed}% used</span>
+        <span className="text-muted-foreground">{percentUsed}% used</span>
       </div>
 
-      <p className={cn('text-xs', remaining < 0 ? 'text-rose-300' : 'text-white/40')}>
+      <p className={cn('text-xs', remaining < 0 ? 'text-danger' : 'text-muted-foreground')}>
         {remaining < 0
           ? `Over by ${formatAmount(Math.abs(remaining), budget.currency)}`
           : `${formatAmount(remaining, budget.currency)} remaining`}

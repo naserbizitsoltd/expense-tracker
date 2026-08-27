@@ -33,16 +33,16 @@ export function BottomSheet({ open, onClose, title, children, fullScreen }: Bott
       />
       <div
         className={cn(
-          'relative flex flex-col bg-[#0f1420] shadow-2xl',
-          fullScreen ? 'h-[100dvh] rounded-none' : 'max-h-[90dvh] rounded-t-3xl'
+          'relative flex flex-col bg-surface-elevated shadow-2xl',
+          fullScreen ? 'h-[100dvh] rounded-none' : 'max-h-[90dvh] rounded-t-2xl'
         )}
       >
-        <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-white/70 active:bg-white/10"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-surface text-muted-foreground active:bg-border"
           >
             <X size={18} />
           </button>

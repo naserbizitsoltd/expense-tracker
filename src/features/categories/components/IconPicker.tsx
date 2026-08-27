@@ -32,7 +32,8 @@ export function IconPicker({ open, onClose, value, color, onSelect }: IconPicker
                     aria-label={name}
                     className={cn(
                       'flex aspect-square items-center justify-center rounded-2xl border transition-all duration-150 active:scale-95',
-                      active ? 'border-primary bg-primary-muted' : 'border-border bg-surface-elevated hover:border-primary/40'
+                      active ? 'border-primary bg-primary-muted' : 'border-border bg-surface-elevated hover:border-primary/40',
+                      !active && 'text-foreground'
                     )}
                   >
                     <Icon className="h-5 w-5" style={{ color: active ? color : undefined }} />

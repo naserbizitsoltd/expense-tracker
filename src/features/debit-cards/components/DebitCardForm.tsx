@@ -5,7 +5,6 @@ import { debitCardRepository, generateId } from '@/db'
 import { useActiveAccounts } from '@/features/transactions/useTransactions'
 import { debitCardFormSchema, type DebitCardFormValues } from '../debitCardSchema'
 import {
-  DEBIT_CARD_COLORS,
   DEFAULT_DEBIT_CARD_COLOR,
   DEBIT_CARD_ICON_OPTIONS,
   DEFAULT_DEBIT_CARD_ICON,
@@ -13,7 +12,7 @@ import {
   EXPIRY_MONTH_OPTIONS,
   expiryYearOptions,
 } from '../debitCardConfig'
-import { Button, Input, Select, useToast } from '@/components/ui'
+import { Button, ColorPicker, Input, Select, useToast } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import type { DebitCard } from '@/types/entities'
 
@@ -172,21 +171,7 @@ export function DebitCardForm({ card, onDone }: DebitCardFormProps) {
 
       <div className="flex flex-col gap-1.5">
         <p className="text-sm font-medium text-foreground">Color</p>
-        <div className="flex flex-wrap gap-2">
-          {DEBIT_CARD_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setValue('color', c)}
-              aria-label={`Use color ${c}`}
-              className={cn(
-                'h-8 w-8 rounded-full border-2 transition-transform active:scale-90',
-                color === c ? 'border-foreground' : 'border-transparent'
-              )}
-              style={{ backgroundColor: c }}
-            />
-          ))}
-        </div>
+        <ColorPicker value={color} onChange={(c) => setValue('color', c)} />
       </div>
 
       <Button type="submit" size="lg" disabled={submitting || !accounts.length} className="w-full">

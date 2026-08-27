@@ -335,7 +335,7 @@ export async function receiveDpsMaturity(input: ReceiveDpsMaturityInput): Promis
   if (!progressBefore.isMatured) {
     throw toAppDbError(new AppDbError('INVALID_DATA', 'DPS has not reached maturity.'))
   }
-  const depositedAmount = contributions.reduce((sum, c) => sum + c.amount, 0)
+  const depositedAmount = dpsBefore.openingDepositedAmount + contributions.reduce((sum, c) => sum + c.amount, 0)
 
   try {
     return await db.transaction(

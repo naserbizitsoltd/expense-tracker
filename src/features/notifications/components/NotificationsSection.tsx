@@ -56,16 +56,11 @@ export function NotificationsSection() {
           aria-checked={enabled}
           aria-label={enabled ? 'Disable notifications' : 'Enable notifications'}
           className={cn(
-            'relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50',
-            enabled ? 'bg-primary' : 'bg-white/10'
+            'inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-colors disabled:opacity-50',
+            enabled ? 'bg-primary justify-end' : 'bg-white/10 justify-start'
           )}
         >
-          <span
-            className={cn(
-              'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform',
-              enabled ? 'translate-x-5' : 'translate-x-0.5'
-            )}
-          />
+          <span className="h-6 w-6 rounded-full bg-white shadow" />
         </button>
       </div>
 
@@ -105,7 +100,7 @@ export function NotificationsSection() {
           <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <Bell className="h-3.5 w-3.5" /> Recent reminders
           </p>
-                    {recent.slice(0, 5).map((entry: NotificationLogEntry) => (
+          {recent.slice(0, 5).map((entry: NotificationLogEntry) => (
             <div key={entry.id} className="flex items-center gap-2 text-xs">
               <span className="min-w-0 flex-1 truncate text-foreground">{entry.title}</span>
               <span className="shrink-0 truncate text-muted-foreground">{entry.body}</span>

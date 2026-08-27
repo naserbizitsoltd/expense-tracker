@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import { useLiveQuery, db } from '@/db'
 import { getDpsProgress } from '@/services/dpsProgressService'
+import { estimateDpsInterest } from '@/services/dpsInterestService'
 import type { Dps, DpsContribution, DpsPayout } from '@/types/entities'
-/** Reactive, newest-first contribution history for a single DPS, plus live deposited total and progress. */
+/** Reactive, newest-first contribution history for a single DPS, plus live deposited total, progress, and interest estimate. */
 export function useDpsContributions(dps: Dps | null) {
   const dpsId = dps?.id ?? null
   const contributionsState = useLiveQuery<DpsContribution[]>(
@@ -11,8 +12,6 @@ export function useDpsContributions(dps: Dps | null) {
   )
   const contributions = contributionsState.data ?? []
 
-  // Real contributions plus whatever was already deposited before this
-  // DPS was entered into the app (see Dps.openingDepositedAmount).
   const totalDeposited = useMemo(
     () => (dps?.openingDepositedAmount ?? 0) + contributions.reduce((sum, c) => sum + c.amount, 0),
     [dps, contributions]
@@ -21,11 +20,17 @@ export function useDpsContributions(dps: Dps | null) {
     () => (dps ? getDpsProgress(dps, contributions.length) : null),
     [dps, contributions.length]
   )
+  const interestEstimate = useMemo(
+    () => (dps ? estimateDpsInterest(dps, contributions) : null),
+    [dps, contributions]
+  )
 
     return {
     contributions,
     totalDeposited,
     progress,
+    interestEstimate,
+    currentValueWithInterest: interestEstimate?.totalValueWithInterest ?? totalDeposited,
     isLoading: contributionsState.isLoading,
     error: contributionsState.error,
   }

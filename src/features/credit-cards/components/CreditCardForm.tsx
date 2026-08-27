@@ -4,14 +4,13 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { creditCardRepository, generateId } from '@/db'
 import { creditCardFormSchema, type CreditCardFormValues } from '../creditCardSchema'
 import {
-  CREDIT_CARD_COLORS,
   DEFAULT_CREDIT_CARD_COLOR,
   CREDIT_CARD_ICON_OPTIONS,
   DEFAULT_CREDIT_CARD_ICON,
   getCreditCardIcon,
 } from '../creditCardConfig'
 import { parseAmountInput, currencySymbol } from '@/lib/money'
-import { Button, CurrencyInput, Input, Select, useToast } from '@/components/ui'
+import { Button, ColorPicker, CurrencyInput, Input, Select, useToast } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import type { CreditCard } from '@/types/entities'
 
@@ -232,21 +231,7 @@ export function CreditCardForm({ card, onDone }: CreditCardFormProps) {
 
       <div className="flex flex-col gap-1.5">
         <p className="text-sm font-medium text-foreground">Color</p>
-        <div className="flex flex-wrap gap-2">
-          {CREDIT_CARD_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setValue('color', c)}
-              aria-label={`Use color ${c}`}
-              className={cn(
-                'h-8 w-8 rounded-full border-2 transition-transform active:scale-90',
-                color === c ? 'border-foreground' : 'border-transparent'
-              )}
-              style={{ backgroundColor: c }}
-            />
-          ))}
-        </div>
+        <ColorPicker value={color} onChange={(c) => setValue('color', c)} />
       </div>
 
       <Button type="submit" size="lg" disabled={submitting} className="w-full">

@@ -262,7 +262,7 @@ export async function repayLoan(input: RepayLoanInput): Promise<LoanRepayment> {
         await db.ledgerEntries.add(ledgerEntry)
         await reconcileAccountBalanceCache(accountId)
 
-                const newOutstanding = outstanding - amount
+        const newOutstanding = outstanding - amount
         if (newOutstanding <= 0) {
           await db.loans.update(loanId, { status: 'closed', updatedAt: now })
         }

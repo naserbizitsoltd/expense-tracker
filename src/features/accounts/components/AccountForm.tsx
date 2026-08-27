@@ -5,7 +5,7 @@ import { accountRepository, generateId } from '@/db'
 import { accountFormSchema, type AccountFormValues } from '../accountSchema'
 import { ACCOUNT_TYPE_PRESETS, getAccountIcon } from '../accountConfig'
 import { parseAmountInput, currencySymbol } from '@/lib/money'
-import { Button, CurrencyInput, Input, Select, useToast } from '@/components/ui'
+import { Button, ColorPicker, CurrencyInput, Input, Select, useToast } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import type { Account } from '@/types/entities'
 
@@ -213,18 +213,7 @@ export function AccountForm({ account, onDone, hasTransactions = false }: Accoun
 
       <div className="flex flex-col gap-1.5">
         <p className="text-sm font-medium text-foreground">Color</p>
-        <div className="flex flex-wrap gap-2">
-          {['#22c55e', '#4f7fff', '#f59e0b', '#e2136e', '#8c3494', '#6366f1', '#f97316', '#64748b'].map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setValue('color', c)}
-              aria-label={`Use color ${c}`}
-              className={cn('h-8 w-8 rounded-full border-2 transition-transform active:scale-90', color === c ? 'border-foreground' : 'border-transparent')}
-              style={{ backgroundColor: c }}
-            />
-          ))}
-        </div>
+        <ColorPicker value={color} onChange={(c) => setValue('color', c)} />
       </div>
 
       <Button type="submit" size="lg" disabled={submitting} className="w-full">

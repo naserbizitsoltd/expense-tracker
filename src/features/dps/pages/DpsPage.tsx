@@ -111,12 +111,19 @@ function DpsDetails({ dpsId, onBack }: { dpsId: string; onBack: () => void }) {
   const { dps, isLoading } = useSingleDps(dpsId)
   const { accounts } = useAccounts()
   const { showToast } = useToast()
-    const [contributeOpen, setContributeOpen] = useState(false)
+  const [contributeOpen, setContributeOpen] = useState(false)
   const [receiveOpen, setReceiveOpen] = useState(false)
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
-  const { contributions, totalDeposited, progress, isLoading: isContributionsLoading } = useDpsContributions(dps ?? null)
+  const { 
+    contributions, 
+    totalDeposited, 
+    progress, 
+    currentValueWithInterest, 
+    interestEstimate, 
+    isLoading: isContributionsLoading 
+  } = useDpsContributions(dps ?? null)
   const { payout } = useDpsPayout(dpsId)
 
   if (isLoading) {
@@ -137,7 +144,7 @@ function DpsDetails({ dpsId, onBack }: { dpsId: string; onBack: () => void }) {
 
   const linkedAccount = accounts.find((a) => a.id === dps.accountId)
   const accountsById = new Map(accounts.map((a) => [a.id, a]))
-    const isArchived = dps.status === 'archived'
+  const isArchived = dps.status === 'archived'
   const isCompleted = dps.status === 'completed'
   const isPaidOut = dps.status === 'paid_out'
   const isMatured = isCompleted && !!progress?.isMatured
@@ -175,16 +182,20 @@ function DpsDetails({ dpsId, onBack }: { dpsId: string; onBack: () => void }) {
         <div className="flex flex-col items-center gap-2 py-1 text-center">
           <p className="text-sm font-semibold text-foreground">{dps.name}</p>
           <p className="-mt-1 text-xs text-muted-foreground">{dps.institution}</p>
-                    <Badge variant={maturityBadgeVariant}>{maturityStatusLabel}</Badge>
+          <Badge variant={maturityBadgeVariant}>{maturityStatusLabel}</Badge>
         </div>
 
-        <BalanceCard label="Total Deposited" amount={formatAmount(totalDeposited, dps.currency)} />
-
-        {dps.openingInterestEarned > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          <BalanceCard label="Deposited" amount={formatAmount(totalDeposited, dps.currency)} />
           <BalanceCard
-            label="Current Value (incl. accumulated interest)"
-            amount={formatAmount(totalDeposited + dps.openingInterestEarned, dps.currency)}
+            label={interestEstimate?.hasRate ? 'Amount After Interest' : 'Amount After Interest (set a rate)'}
+            amount={formatAmount(currentValueWithInterest, dps.currency)}
           />
+        </div>
+        {interestEstimate?.isPartlyEstimatedFromSchedule && (
+          <p className="-mt-3 px-1 text-xs text-muted-foreground">
+            Estimated from your installment schedule — exact past payment dates weren't recorded.
+          </p>
         )}
 
         <Card>
@@ -197,7 +208,7 @@ function DpsDetails({ dpsId, onBack }: { dpsId: string; onBack: () => void }) {
           <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-surface-elevated">
             <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress?.percentComplete ?? 0}%` }} />
           </div>
-                    <p className="mt-1.5 text-xs font-medium text-muted-foreground">{progress?.percentComplete ?? 0}%</p>
+          <p className="mt-1.5 text-xs font-medium text-muted-foreground">{progress?.percentComplete ?? 0}%</p>
         </Card>
 
         {(isCompleted || isPaidOut) && (
@@ -241,7 +252,7 @@ function DpsDetails({ dpsId, onBack }: { dpsId: string; onBack: () => void }) {
           {dps.openingInterestEarned > 0 && (
             <DetailRow label="Interest accumulated so far" value={formatAmount(dps.openingInterestEarned, dps.currency)} />
           )}
-                    <DetailRow label="Status" value={maturityStatusLabel} />
+          <DetailRow label="Status" value={maturityStatusLabel} />
         </Card>
 
         {dps.notes && (
@@ -271,7 +282,7 @@ function DpsDetails({ dpsId, onBack }: { dpsId: string; onBack: () => void }) {
               ))}
             </Card>
           )}
-                </section>
+        </section>
 
         {payout && (
           <section className="flex flex-col gap-1">
@@ -322,7 +333,7 @@ function DpsDetails({ dpsId, onBack }: { dpsId: string; onBack: () => void }) {
         </div>
       </div>
 
-            <DpsContributionSheet
+      <DpsContributionSheet
         open={contributeOpen}
         onClose={() => setContributeOpen(false)}
         dps={dps}

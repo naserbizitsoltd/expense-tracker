@@ -23,18 +23,18 @@ export function SuccessToast({ message, detail, amount, currency, variant, onDis
     variant ?? (amount > 0 ? 'positive' : amount < 0 ? 'negative' : 'neutral')
 
   return (
-    <div className="fixed inset-x-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-[60] flex items-center gap-3 rounded-2xl bg-[#151b2b] px-4 py-3.5 shadow-2xl ring-1 ring-white/10 animate-in slide-in-from-bottom-4">
-      <CheckCircle2 size={20} className="shrink-0 text-emerald-400" />
+    <div className="fixed inset-x-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-[60] flex items-center gap-3 rounded-2xl bg-surface-elevated px-4 py-3.5 shadow-2xl ring-1 ring-border animate-in slide-in-from-bottom-4">
+      <CheckCircle2 size={20} className="shrink-0 text-success" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-white">{message}</p>
-        {detail && <p className="truncate text-xs text-white/40">{detail}</p>}
+        <p className="truncate text-sm font-medium text-foreground">{message}</p>
+        {detail && <p className="truncate text-xs text-muted-foreground">{detail}</p>}
       </div>
       <span
         className={cn(
           'shrink-0 text-sm font-semibold',
-          resolvedVariant === 'positive' && 'text-emerald-400',
-          resolvedVariant === 'negative' && 'text-rose-300/90',
-          resolvedVariant === 'neutral' && 'text-white/70'
+          resolvedVariant === 'positive' && 'text-success',
+          resolvedVariant === 'negative' && 'text-danger',
+          resolvedVariant === 'neutral' && 'text-muted-foreground'
         )}
       >
         {resolvedVariant === 'positive' ? '+' : resolvedVariant === 'negative' ? '-' : ''}

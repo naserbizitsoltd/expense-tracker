@@ -1,15 +1,15 @@
 import {
-  Utensils, Coffee, Pizza, ShoppingCart,
-  ShoppingBag, Shirt, Gift,
-  Car, Bus, TrainFront, Fuel,
-  Receipt, Zap, Wifi, Phone, Home, Building2,
-  HeartPulse, Pill, GraduationCap, BookOpen,
-  Popcorn, Music, Gamepad2, Sparkles, Scissors,
-  Plane, MapPin, Users, Baby,
-  Laptop, Smartphone, Tv, Repeat,
-  Wallet, Briefcase, Landmark, TrendingUp, Coins, PiggyBank, Banknote,
+  Utensils, Coffee, Pizza, ShoppingCart, IceCream, Beer, Wine, Cake, Apple,
+  ShoppingBag, Shirt, Gift, Store, Watch, Backpack, Diamond,
+  Car, Bus, TrainFront, Fuel, Bike, Ship, Truck, Anchor, Navigation,
+  Receipt, Zap, Wifi, Phone, Home, Building2, Droplet, Flame, Trash2, Lightbulb, Thermometer, Wrench,
+  HeartPulse, Pill, GraduationCap, BookOpen, Stethoscope, Dumbbell, School, Brain, Syringe,
+  Popcorn, Music, Gamepad2, Sparkles, Scissors, Camera, Film, PartyPopper, Palette, Guitar,
+  Plane, MapPin, Users, Baby, Luggage, Compass, PawPrint, Tent, Globe,
+  Laptop, Smartphone, Tv, Repeat, Headphones, Cloud, Monitor, Gamepad, Keyboard,
+  Wallet, Briefcase, Landmark, TrendingUp, Coins, PiggyBank, Banknote, CreditCard, HandCoins, LineChart, Building, Scale,
   RotateCcw, Percent, ShieldCheck, FileText,
-  Tag, MoreHorizontal,
+  Tag, MoreHorizontal, HelpCircle, Bookmark, Star,
   type LucideIcon,
 } from 'lucide-react'
 import type { CategoryType } from '@/types/entities'
@@ -27,33 +27,42 @@ export const CATEGORY_COLORS: string[] = [
 // Curated icon set grouped for an easy, scannable mobile picker —
 // intentionally NOT the full Lucide catalog.
 export const CATEGORY_ICON_GROUPS: { label: string; icons: string[] }[] = [
-  { label: 'Food & Dining', icons: ['Utensils', 'Coffee', 'Pizza', 'ShoppingCart'] },
-  { label: 'Shopping & Gifts', icons: ['ShoppingBag', 'Shirt', 'Gift'] },
-  { label: 'Transport', icons: ['Car', 'Bus', 'TrainFront', 'Fuel'] },
-  { label: 'Bills & Home', icons: ['Receipt', 'Zap', 'Wifi', 'Phone', 'Home', 'Building2'] },
-  { label: 'Health & Education', icons: ['HeartPulse', 'Pill', 'GraduationCap', 'BookOpen'] },
-  { label: 'Lifestyle', icons: ['Popcorn', 'Music', 'Gamepad2', 'Sparkles', 'Scissors'] },
-  { label: 'Travel & Family', icons: ['Plane', 'MapPin', 'Users', 'Baby'] },
-  { label: 'Tech & Subscriptions', icons: ['Laptop', 'Smartphone', 'Tv', 'Repeat'] },
+  { label: 'Food & Dining', icons: ['Utensils', 'Coffee', 'Pizza', 'ShoppingCart', 'IceCream', 'Beer', 'Wine', 'Cake', 'Apple'] },
+  { label: 'Shopping & Gifts', icons: ['ShoppingBag', 'Shirt', 'Gift', 'Store', 'Watch', 'Backpack', 'Diamond'] },
+  { label: 'Transport', icons: ['Car', 'Bus', 'TrainFront', 'Fuel', 'Bike', 'Ship', 'Truck', 'Anchor', 'Navigation'] },
+  {
+    label: 'Bills & Home',
+    icons: ['Receipt', 'Zap', 'Wifi', 'Phone', 'Home', 'Building2', 'Droplet', 'Flame', 'Trash2', 'Lightbulb', 'Thermometer', 'Wrench'],
+  },
+  { label: 'Health & Education', icons: ['HeartPulse', 'Pill', 'GraduationCap', 'BookOpen', 'Stethoscope', 'Dumbbell', 'School', 'Brain', 'Syringe'] },
+  {
+    label: 'Lifestyle',
+    icons: ['Popcorn', 'Music', 'Gamepad2', 'Sparkles', 'Scissors', 'Camera', 'Film', 'PartyPopper', 'Palette', 'Guitar'],
+  },
+  { label: 'Travel & Family', icons: ['Plane', 'MapPin', 'Users', 'Baby', 'Luggage', 'Compass', 'PawPrint', 'Tent', 'Globe'] },
+  { label: 'Tech & Subscriptions', icons: ['Laptop', 'Smartphone', 'Tv', 'Repeat', 'Headphones', 'Cloud', 'Monitor', 'Gamepad', 'Keyboard'] },
   {
     label: 'Finance & Income',
-    icons: ['Wallet', 'Briefcase', 'Landmark', 'TrendingUp', 'Coins', 'PiggyBank', 'Banknote', 'RotateCcw', 'Percent', 'ShieldCheck', 'FileText'],
+    icons: [
+      'Wallet', 'Briefcase', 'Landmark', 'TrendingUp', 'Coins', 'PiggyBank', 'Banknote',
+      'RotateCcw', 'Percent', 'ShieldCheck', 'FileText', 'CreditCard', 'HandCoins', 'LineChart', 'Building', 'Scale',
+    ],
   },
-  { label: 'Other', icons: ['Tag', 'MoreHorizontal'] },
+  { label: 'Other', icons: ['Tag', 'MoreHorizontal', 'HelpCircle', 'Bookmark', 'Star'] },
 ]
 
 const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
-  Utensils, Coffee, Pizza, ShoppingCart,
-  ShoppingBag, Shirt, Gift,
-  Car, Bus, TrainFront, Fuel,
-  Receipt, Zap, Wifi, Phone, Home, Building2,
-  HeartPulse, Pill, GraduationCap, BookOpen,
-  Popcorn, Music, Gamepad2, Sparkles, Scissors,
-  Plane, MapPin, Users, Baby,
-  Laptop, Smartphone, Tv, Repeat,
-  Wallet, Briefcase, Landmark, TrendingUp, Coins, PiggyBank, Banknote,
+  Utensils, Coffee, Pizza, ShoppingCart, IceCream, Beer, Wine, Cake, Apple,
+  ShoppingBag, Shirt, Gift, Store, Watch, Backpack, Diamond,
+  Car, Bus, TrainFront, Fuel, Bike, Ship, Truck, Anchor, Navigation,
+  Receipt, Zap, Wifi, Phone, Home, Building2, Droplet, Flame, Trash2, Lightbulb, Thermometer, Wrench,
+  HeartPulse, Pill, GraduationCap, BookOpen, Stethoscope, Dumbbell, School, Brain, Syringe,
+  Popcorn, Music, Gamepad2, Sparkles, Scissors, Camera, Film, PartyPopper, Palette, Guitar,
+  Plane, MapPin, Users, Baby, Luggage, Compass, PawPrint, Tent, Globe,
+  Laptop, Smartphone, Tv, Repeat, Headphones, Cloud, Monitor, Gamepad, Keyboard,
+  Wallet, Briefcase, Landmark, TrendingUp, Coins, PiggyBank, Banknote, CreditCard, HandCoins, LineChart, Building, Scale,
   RotateCcw, Percent, ShieldCheck, FileText,
-  Tag, MoreHorizontal,
+  Tag, MoreHorizontal, HelpCircle, Bookmark, Star,
 }
 
 export function getCategoryIcon(name: string): LucideIcon {
