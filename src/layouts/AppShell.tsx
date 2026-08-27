@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Menu } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 interface AppShellProps {
@@ -7,17 +7,37 @@ interface AppShellProps {
   subtitle?: string
   children: ReactNode
   headerBack?: () => void
+  headerMenu?: () => void
   headerAction?: ReactNode
   bottomNav?: ReactNode
   fab?: ReactNode
   className?: string
 }
 
-export function AppShell({ title, subtitle, children, headerBack, headerAction, bottomNav, fab, className }: AppShellProps) {
+export function AppShell({ 
+  title, 
+  subtitle, 
+  children, 
+  headerBack, 
+  headerMenu,
+  headerAction, 
+  bottomNav, 
+  fab, 
+  className 
+}: AppShellProps) {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="safe-top sticky top-0 z-30 border-b border-border/70 bg-background/85 backdrop-blur-lg">
         <div className="mx-auto flex h-16 max-w-md items-center gap-3 px-4">
+          {!headerBack && headerMenu && (
+            <button
+              onClick={headerMenu}
+              aria-label="Open menu"
+              className="-ml-1.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-elevated active:scale-90"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          )}
           {headerBack && (
             <button
               onClick={headerBack}

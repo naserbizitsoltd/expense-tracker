@@ -21,9 +21,10 @@ type SavedFeedback =
 interface TransactionsPageProps {
   activeNav: string
   onNavChange: (key: string) => void
+  onOpenMenu: () => void
 }
 
-export function TransactionsPage({ activeNav, onNavChange }: TransactionsPageProps) {
+export function TransactionsPage({ activeNav, onNavChange, onOpenMenu }: TransactionsPageProps) {
   const { items, isLoading } = useTransactionsList()
   const { showToast } = useToast()
   const [addMenuOpen, setAddMenuOpen] = useState(false)
@@ -48,6 +49,7 @@ export function TransactionsPage({ activeNav, onNavChange }: TransactionsPagePro
   return (
     <AppShell
       title="Transactions"
+      headerMenu={onOpenMenu}
       bottomNav={<BottomNav active={activeNav} onChange={onNavChange} />}
       headerAction={
         <button

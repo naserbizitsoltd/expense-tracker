@@ -1,4 +1,4 @@
-import { Home, Receipt, Wallet, PieChart, MoreHorizontal } from 'lucide-react'
+import { Home, Receipt, Wallet, PieChart } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 const navItems = [
@@ -6,7 +6,6 @@ const navItems = [
   { key: 'transactions', label: 'Transactions', icon: Receipt },
   { key: 'accounts', label: 'Accounts', icon: Wallet },
   { key: 'reports', label: 'Reports', icon: PieChart },
-  { key: 'more', label: 'More', icon: MoreHorizontal },
 ] as const
 
 interface BottomNavProps {

@@ -18,6 +18,7 @@ import type { Account, Category, Transaction } from '@/types/entities'
 interface AccountsPageProps {
   activeNav: string
   onNavChange: (key: string) => void
+  onOpenMenu: () => void
   onOpenAccount: (id: string) => void
 }
 
@@ -27,8 +28,8 @@ type QuickActionFeedback =
   | { kind: 'income' | 'expense'; transaction: Transaction; category: Category; account: Account | null }
   | { kind: 'transfer'; transaction: Transaction; fromAccount: Account; toAccount: Account }
 
-export function AccountsPage({ activeNav, onNavChange, onOpenAccount }: AccountsPageProps) {
-    const { activeAccounts, archivedAccounts, totalBalance, isLoading } = useAccounts()
+export function AccountsPage({ activeNav, onNavChange, onOpenMenu, onOpenAccount }: AccountsPageProps) {
+  const { activeAccounts, archivedAccounts, totalBalance, isLoading } = useAccounts()
   const [showArchived, setShowArchived] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [expenseOpen, setExpenseOpen] = useState(false)
@@ -44,6 +45,7 @@ export function AccountsPage({ activeNav, onNavChange, onOpenAccount }: Accounts
     <AppShell
       title="Accounts"
       subtitle={`${activeAccounts.length} active`}
+      headerMenu={onOpenMenu}
       bottomNav={<BottomNav active={activeNav} onChange={onNavChange} />}
       fab={
         <Button size="lg" className="h-14 w-14 rounded-full p-0 shadow-lg" aria-label="Add account" onClick={() => setAddOpen(true)}>
@@ -52,7 +54,7 @@ export function AccountsPage({ activeNav, onNavChange, onOpenAccount }: Accounts
       }
     >
       <div className="flex flex-col gap-6">
-                <BalanceCard label="Total Available" amount={formatAmount(totalBalance, APP_CONFIG.defaultCurrency)} />
+        <BalanceCard label="Total Available" amount={formatAmount(totalBalance, APP_CONFIG.defaultCurrency)} />
 
         <div className="grid grid-cols-3 gap-2.5">
           <button
@@ -89,7 +91,7 @@ export function AccountsPage({ activeNav, onNavChange, onOpenAccount }: Accounts
           />
         )}
 
-                {grouped.map((group) => (
+        {grouped.map((group) => (
           <section key={group.label} className="flex flex-col gap-2.5">
             <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p>
             <div className="flex flex-col gap-2">
@@ -123,7 +125,7 @@ export function AccountsPage({ activeNav, onNavChange, onOpenAccount }: Accounts
         )}
       </div>
 
-            <BottomSheet open={addOpen} onClose={() => setAddOpen(false)} title="Add Account">
+      <BottomSheet open={addOpen} onClose={() => setAddOpen(false)} title="Add Account">
         <AccountForm onDone={() => setAddOpen(false)} />
       </BottomSheet>
 

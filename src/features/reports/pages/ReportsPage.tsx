@@ -35,6 +35,7 @@ import { format } from 'date-fns'
 interface ReportsPageProps {
   activeNav: string
   onNavChange: (key: string) => void
+  onOpenMenu: () => void
 }
 
 const PERIOD_OPTIONS: { key: ReportPeriodOption; label: string }[] = [
@@ -66,7 +67,7 @@ function SectionHeader({ title }: { title: string }) {
   return <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
 }
 
-export function ReportsPage({ activeNav, onNavChange }: ReportsPageProps) {
+export function ReportsPage({ activeNav, onNavChange, onOpenMenu }: ReportsPageProps) {
   const reports = useReports()
   const [filtersOpen, setFiltersOpen] = useState(false)
 
@@ -78,6 +79,7 @@ export function ReportsPage({ activeNav, onNavChange }: ReportsPageProps) {
     <AppShell
       title="Reports"
       subtitle={format(reports.range.start, 'd MMM')  + ' – ' + format(reports.range.end, 'd MMM yyyy')}
+      headerMenu={onOpenMenu}
       bottomNav={<BottomNav active={activeNav} onChange={onNavChange} />}
       headerAction={
         <IconButton aria-label="Filters" onClick={() => setFiltersOpen(true)} className="relative">

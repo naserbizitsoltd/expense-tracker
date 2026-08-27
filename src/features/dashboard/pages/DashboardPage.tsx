@@ -36,6 +36,7 @@ import type { Account, Category, Transaction } from '@/types/entities'
 interface DashboardPageProps {
   activeNav: string
   onNavChange: (key: string) => void
+  onOpenMenu: () => void
   onOpenAccount: (id: string) => void
   onOpenTransactions: () => void
   onOpenLoans: () => void
@@ -67,6 +68,7 @@ function SectionHeader({ title, onViewAll }: { title: string; onViewAll?: () => 
 export function DashboardPage({
   activeNav,
   onNavChange,
+  onOpenMenu,
   onOpenAccount,
   onOpenTransactions,
   onOpenLoans,
@@ -108,7 +110,7 @@ export function DashboardPage({
   const budgetRemaining = budgetTotals.amount - budgetTotals.spent
 
   return (
-    <AppShell title="Home" bottomNav={<BottomNav active={activeNav} onChange={onNavChange} />}>
+    <AppShell title="Home" headerMenu={onOpenMenu} bottomNav={<BottomNav active={activeNav} onChange={onNavChange} />}>
       <div className="flex flex-col gap-6">
         {/* 1. Total Available Money */}
         <BalanceCard label="Total Available" amount={formatAmount(dashboard.totalAvailable, currency)} />

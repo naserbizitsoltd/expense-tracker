@@ -8,12 +8,12 @@ import { NotificationRunner } from '@/features/notifications/components/Notifica
 import { SettingsPage } from '@/features/settings/pages/SettingsPage'
 import { ThemeApplier } from '@/features/settings/ThemeApplier'
 import { BottomNav } from '@/layouts/BottomNav'
+import { Sidebar } from '@/layouts/Sidebar'
 import { AccountsPage } from '@/features/accounts/pages/AccountsPage'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { ReportsPage } from '@/features/reports/pages/ReportsPage'
 import { AccountDetailsPage } from '@/features/accounts/pages/AccountDetailsPage'
 import { TransactionsPage } from '@/features/transactions/pages/TransactionsPage'
-import { MoreDrawer } from '@/features/more/components/MoreDrawer'
 import { CategoriesPage } from '@/features/categories/pages/CategoriesPage'
 import { RecurringPage } from '@/features/recurring/pages/RecurringPage'
 import { BudgetPage } from '@/features/budgets/pages/BudgetPage'
@@ -25,8 +25,8 @@ import { DpsPage } from '@/features/dps/pages/DpsPage'
 import { FdrPage } from '@/features/fdr/pages/FdrPage'
 import { DepositsOverviewPage } from '@/features/deposits/pages/DepositsOverviewPage'
 
-type NavKey = 'home' | 'transactions' | 'accounts' | 'reports' | 'more'
-type PlaceholderNavKey = Exclude<NavKey, 'accounts' | 'transactions' | 'more' | 'home'>
+type NavKey = 'home' | 'transactions' | 'accounts' | 'reports'
+type PlaceholderNavKey = Exclude<NavKey, 'accounts' | 'transactions' | 'home'>
 
 const COMING_SOON: Record<PlaceholderNavKey, { title: string; icon: LucideIcon; description: string }> = {
   reports: { title: 'Reports', icon: PieChart, description: 'Spending insights and charts will show up here.' },
@@ -44,7 +44,7 @@ function ComingSoonScreen({ navKey, onNavChange }: { navKey: PlaceholderNavKey; 
 function AppContent() {
   const [activeNav, setActiveNav] = useState<NavKey>('home')
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
-  const [moreDrawerOpen, setMoreDrawerOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
   const [showRecurring, setShowRecurring] = useState(false)
   const [showBudgets, setShowBudgets] = useState(false)
@@ -57,17 +57,11 @@ function AppContent() {
   const [showDeposits, setShowDeposits] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
 
-  // "More" is now an overlay drawer, not a tab destination — intercept it
-  // here so every bottom nav still just wires onChange straight through.
   function handleNavChange(key: string) {
-    if (key === 'more') {
-      setMoreDrawerOpen(true)
-      return
-    }
     setActiveNav(key as NavKey)
   }
 
-  // Full-screen pushed pages opened from the drawer. These replace the tab
+  // Full-screen pushed pages opened from the sidebar. These replace the tab
   // content entirely (back arrow, no bottom nav) — same as before, just no
   // longer gated behind activeNav === 'more'.
   if (showCategories) return <CategoriesPage onBack={() => setShowCategories(false)} />
@@ -96,10 +90,10 @@ function AppContent() {
   }
   if (showSettings) return <SettingsPage onBack={() => setShowSettings(false)} />
 
-  const drawer = (
-    <MoreDrawer
-      open={moreDrawerOpen}
-      onClose={() => setMoreDrawerOpen(false)}
+  const sidebar = (
+    <Sidebar
+      open={sidebarOpen}
+      onClose={() => setSidebarOpen(false)}
       onOpenCategories={() => setShowCategories(true)}
       onOpenRecurring={() => setShowRecurring(true)}
       onOpenBudgets={() => setShowBudgets(true)}
@@ -124,6 +118,7 @@ function AppContent() {
         <DashboardPage
           activeNav={activeNav}
           onNavChange={handleNavChange}
+          onOpenMenu={() => setSidebarOpen(true)}
           onOpenAccount={setSelectedAccountId}
           onOpenTransactions={() => setActiveNav('transactions')}
           onOpenLoans={() => setShowLoans(true)}
@@ -134,7 +129,7 @@ function AppContent() {
           onOpenCreditCards={() => setShowCreditCards(true)}
           onOpenDebitCards={() => setShowDebitCards(true)}
         />
-        {drawer}
+        {sidebar}
       </>
     )
   }
@@ -146,8 +141,13 @@ function AppContent() {
     }
     return (
       <>
-        <AccountsPage activeNav={activeNav} onNavChange={handleNavChange} onOpenAccount={setSelectedAccountId} />
-        {drawer}
+        <AccountsPage 
+          activeNav={activeNav} 
+          onNavChange={handleNavChange} 
+          onOpenMenu={() => setSidebarOpen(true)} 
+          onOpenAccount={setSelectedAccountId} 
+        />
+        {sidebar}
       </>
     )
   }
@@ -156,8 +156,12 @@ function AppContent() {
   if (activeNav === 'transactions') {
     return (
       <>
-        <TransactionsPage activeNav={activeNav} onNavChange={handleNavChange} />
-        {drawer}
+        <TransactionsPage 
+          activeNav={activeNav} 
+          onNavChange={handleNavChange} 
+          onOpenMenu={() => setSidebarOpen(true)} 
+        />
+        {sidebar}
       </>
     )
   }
@@ -166,8 +170,12 @@ function AppContent() {
   if (activeNav === 'reports') {
     return (
       <>
-        <ReportsPage activeNav={activeNav} onNavChange={handleNavChange} />
-        {drawer}
+        <ReportsPage 
+          activeNav={activeNav} 
+          onNavChange={handleNavChange} 
+          onOpenMenu={() => setSidebarOpen(true)} 
+        />
+        {sidebar}
       </>
     )
   }
@@ -177,7 +185,7 @@ function AppContent() {
   return (
     <>
       <ComingSoonScreen navKey={activeNav as PlaceholderNavKey} onNavChange={setActiveNav} />
-      {drawer}
+      {sidebar}
     </>
   )
 }
