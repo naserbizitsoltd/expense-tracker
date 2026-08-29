@@ -48,6 +48,39 @@ export function computeNextRunDate(from: number, frequency: RecurrenceFrequency,
   }
 }
 
+// Headroom for getRecurringOccurrencesInRange below — a daily rule
+// walked from its startDate needs many more steps than the
+// MAX_CATCHUP_OCCURRENCES safety cap (which only bounds one catch-up
+// pass) to reach a visible calendar month years out.
+const MAX_CALENDAR_OCCURRENCES = 2000
+
+/**
+ * Every occurrence date a rule would produce inside [rangeStart, rangeEnd]
+ * (inclusive), computed purely from its schedule fields (startDate,
+ * frequency, interval, endDate) — read-only, no database access, never
+ * advances nextRunDate/lastRunDate, and never writes a transaction. Used
+ * by the Financial Calendar to preview past and future occurrences
+ * without creating a second/duplicate schedule — this only previews what
+ * the real engine (generateOneOccurrence/processDueRecurringTransactions)
+ * would produce.
+ */
+export function getRecurringOccurrencesInRange(
+  rule: Pick<RecurringTransaction, 'startDate' | 'endDate' | 'frequency' | 'interval'>,
+  rangeStart: number,
+  rangeEnd: number
+): number[] {
+  const occurrences: number[] = []
+  let occurrenceDate = rule.startDate
+  let iterations = 0
+  while (occurrenceDate <= rangeEnd && iterations < MAX_CALENDAR_OCCURRENCES) {
+    if (rule.endDate !== null && occurrenceDate > rule.endDate) break
+    if (occurrenceDate >= rangeStart) occurrences.push(occurrenceDate)
+    occurrenceDate = computeNextRunDate(occurrenceDate, rule.frequency, rule.interval)
+    iterations++
+  }
+  return occurrences
+}
+
 /**
  * Attempts to generate exactly one transaction for the rule at its
  * current nextRunDate, then advances the schedule. Returns true if a

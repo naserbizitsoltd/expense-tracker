@@ -1,8 +1,18 @@
 import { useRef, useState } from 'react'
 import { DownloadCloud, UploadCloud } from 'lucide-react'
-import { Button, ConfirmationDialog, useToast } from '@/components/ui'
-import { exportBackup, readAndValidateBackupFile, restoreBackup, type BackupPayload } from '@/db/backup'
+import { Button, useToast } from '@/components/ui'
+import {
+  exportBackup,
+  previewBackup,
+  restoreBackup,
+  type BackupExportResult,
+  type BackupPayload,
+  type BackupPreview,
+} from '@/db/backup'
 import { getUserMessage } from '@/db/errors'
+import { OldBackupWarning } from './OldBackupWarning'
+import { BackupResultDialog } from './BackupResultDialog'
+import { RestorePreviewDialog } from './RestorePreviewDialog'
 
 export function BackupRestoreSection() {
   const { showToast } = useToast()
@@ -10,13 +20,19 @@ export function BackupRestoreSection() {
 
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
-  const [pendingBackup, setPendingBackup] = useState<BackupPayload | null>(null)
+  const [exportResult, setExportResult] = useState<BackupExportResult | null>(null)
+  const [pendingBackup, setPendingBackup] = useState<{ payload: BackupPayload; preview: BackupPreview } | null>(
+    null
+  )
 
   async function handleExport() {
     setIsExporting(true)
     try {
-      await exportBackup()
-      showToast('Backup exported', 'success')
+      const result = await exportBackup()
+      setExportResult(result)
+      if (!result.verification.ok) {
+        showToast('Backup saved, but verification found issues — check the details', 'error')
+      }
     } catch (error) {
       showToast(getUserMessage(error), 'error')
     } finally {
@@ -34,8 +50,8 @@ export function BackupRestoreSection() {
     if (!file) return
 
     try {
-      const payload = await readAndValidateBackupFile(file)
-      setPendingBackup(payload)
+      const { payload, preview } = await previewBackup(file)
+      setPendingBackup({ payload, preview })
     } catch (error) {
       showToast(getUserMessage(error), 'error')
     }
@@ -45,13 +61,15 @@ export function BackupRestoreSection() {
     if (!pendingBackup) return
     setIsImporting(true)
     try {
-      await restoreBackup(pendingBackup)
+      await restoreBackup(pendingBackup.payload)
       showToast('Backup restored', 'success')
+      setPendingBackup(null)
     } catch (error) {
+      // The restore transaction rolled back on failure — existing data
+      // is untouched, so leave the preview open rather than dismissing it.
       showToast(getUserMessage(error), 'error')
     } finally {
       setIsImporting(false)
-      setPendingBackup(null)
     }
   }
 
@@ -71,6 +89,10 @@ export function BackupRestoreSection() {
         </Button>
       </div>
 
+      <div className="mt-3">
+        <OldBackupWarning />
+      </div>
+
       <input
         ref={fileInputRef}
         type="file"
@@ -79,14 +101,13 @@ export function BackupRestoreSection() {
         onChange={handleFileSelected}
       />
 
-      <ConfirmationDialog
-        open={pendingBackup !== null}
-        onClose={() => setPendingBackup(null)}
+      <BackupResultDialog result={exportResult} onClose={() => setExportResult(null)} />
+
+      <RestorePreviewDialog
+        preview={pendingBackup?.preview ?? null}
+        isRestoring={isImporting}
+        onCancel={() => setPendingBackup(null)}
         onConfirm={handleConfirmRestore}
-        title="Restore Backup?"
-        description="Your current app data will be replaced by the backup data. This cannot be undone."
-        confirmLabel="Restore"
-        variant="danger"
       />
     </div>
   )

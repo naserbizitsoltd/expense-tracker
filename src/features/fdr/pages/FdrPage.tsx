@@ -20,6 +20,7 @@ import { FdrForm } from '../FdrForm'
 import { FdrPayoutSheet } from '../FdrPayoutSheet'
 import { FdrRenewSheet } from '../FdrRenewSheet'
 import { FdrWithdrawSheet } from '../FdrWithdrawSheet'
+import { FdrInterestCalculatorCard } from '../components/FdrInterestCalculatorCard' // Added import
 import { archiveFdr, restoreFdr, isFdrMatured, getFdrMaturitySummary } from '@/services/fdrService'
 import { fdrStatusLabel, fdrStatusBadgeVariant } from '../fdrConfig'
 import { formatAmount } from '@/lib/money'
@@ -211,6 +212,9 @@ function FdrDetails({
             </div>
           )}
         </Card>
+
+        {/* Added FdrInterestCalculatorCard - only for active FDRs */}
+        {fdr.status === 'active' && <FdrInterestCalculatorCard fdr={fdr} />}
 
         <Card padding="none" className="flex flex-col divide-y divide-border">
           <DetailRow label="Provider" value={fdr.institution} />

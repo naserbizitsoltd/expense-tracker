@@ -26,6 +26,25 @@ export interface DpsProgress {
   isMatured: boolean
 }
 
+/**
+ * Every scheduled installment date for a DPS landing inside
+ * [rangeStart, rangeEnd] (inclusive) — computed purely from startDate/
+ * tenureMonths/maturityDate, independent of which installments already
+ * have an actual contribution recorded. Read-only; used by the
+ * Financial Calendar to preview the schedule without touching the
+ * database or duplicating any schedule data.
+ */
+export function getDpsInstallmentDatesInRange(dps: Dps, rangeStart: number, rangeEnd: number): number[] {
+  const dates: number[] = []
+  for (let k = 0; k < dps.tenureMonths; k++) {
+    const date = addMonths(dps.startDate, k).getTime()
+    if (dps.maturityDate !== null && date > dps.maturityDate) break
+    if (date > rangeEnd) break
+    if (date >= rangeStart) dates.push(date)
+  }
+  return dates
+}
+
 export function getDpsProgress(dps: Dps, contributionCount: number): DpsProgress {
   // Paid installments = real contribution records PLUS whatever was
   // already paid before this DPS was entered into the app (see

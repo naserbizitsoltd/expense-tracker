@@ -24,6 +24,11 @@ import { LoanPage } from '@/features/loans/pages/LoanPage'
 import { DpsPage } from '@/features/dps/pages/DpsPage'
 import { FdrPage } from '@/features/fdr/pages/FdrPage'
 import { DepositsOverviewPage } from '@/features/deposits/pages/DepositsOverviewPage'
+import { NetWorthPage } from '@/features/networth/pages/NetWorthPage'
+import { CashFlowPage } from '@/features/reports/pages/CashFlowPage'
+import { MonthlySummaryPage } from '@/features/reports/pages/MonthlySummaryPage'
+import { FinancialCalendarPage } from '@/features/calender/pages/FinancialCalendarPage'
+import { FinancialHealthPage } from '@/features/health/pages/FinancialHealthPage'
 
 type NavKey = 'home' | 'transactions' | 'accounts' | 'reports'
 type PlaceholderNavKey = Exclude<NavKey, 'accounts' | 'transactions' | 'home'>
@@ -55,6 +60,11 @@ function AppContent() {
   const [showDps, setShowDps] = useState(false)
   const [showFdr, setShowFdr] = useState(false)
   const [showDeposits, setShowDeposits] = useState(false)
+  const [showNetWorth, setShowNetWorth] = useState(false)
+  const [showCashFlow, setShowCashFlow] = useState(false)
+  const [showMonthlySummary, setShowMonthlySummary] = useState(false)
+  const [showFinancialCalendar, setShowFinancialCalendar] = useState(false)
+  const [showFinancialHealth, setShowFinancialHealth] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
 
   function handleNavChange(key: string) {
@@ -88,6 +98,11 @@ function AppContent() {
       />
     )
   }
+  if (showNetWorth) return <NetWorthPage onBack={() => setShowNetWorth(false)} />
+  if (showCashFlow) return <CashFlowPage onBack={() => setShowCashFlow(false)} />
+  if (showMonthlySummary) return <MonthlySummaryPage onBack={() => setShowMonthlySummary(false)} />
+  if (showFinancialCalendar) return <FinancialCalendarPage onBack={() => setShowFinancialCalendar(false)} />
+  if (showFinancialHealth) return <FinancialHealthPage onBack={() => setShowFinancialHealth(false)} />
   if (showSettings) return <SettingsPage onBack={() => setShowSettings(false)} />
 
   const sidebar = (
@@ -104,10 +119,14 @@ function AppContent() {
       onOpenDps={() => setShowDps(true)}
       onOpenFdr={() => setShowFdr(true)}
       onOpenDeposits={() => setShowDeposits(true)}
+      onOpenNetWorth={() => setShowNetWorth(true)}
+      onOpenCashFlow={() => setShowCashFlow(true)}
+      onOpenMonthlySummary={() => setShowMonthlySummary(true)}
+      onOpenFinancialCalendar={() => setShowFinancialCalendar(true)}
+      onOpenFinancialHealth={() => setShowFinancialHealth(true)}
       onOpenSettings={() => setShowSettings(true)}
     />
   )
-
   // Home tab - central dashboard
   if (activeNav === 'home') {
     if (selectedAccountId) {

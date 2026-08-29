@@ -208,7 +208,7 @@ async function createCreditCardExpense(
         toAccountId: null,
         categoryId: input.categoryId,
         creditCardId: card.id,
-        debitCardId: null,        // Added: credit-card purchase isn't paid by a debit card
+        debitCardId: null,
         relatedEntityId,
         note: input.note?.trim() ?? '',
         date: input.date,
@@ -285,7 +285,7 @@ export async function payCreditCardBill(input: CreditCardPaymentInput): Promise<
         toAccountId: null,
         categoryId: null,
         creditCardId: card.id,
-        debitCardId: null,        // Added: bill payment also isn't a debit-card transaction
+        debitCardId: null,
         relatedEntityId: null,
         note: input.note?.trim() ?? '',
         date: input.date,
@@ -609,8 +609,9 @@ export async function deleteTransaction(id: string): Promise<void> {
           const loan = await db.loans.get(existing.relatedEntityId)
           if (loan && loan.status === 'closed') {
             const remainingRepayments = await db.loanRepayments.where('loanId').equals(loan.id).toArray()
-            const alreadyRepaid = remainingRepayments.reduce((sum, r) => sum + r.amount, 0)
-            if (loan.principal - alreadyRepaid > 0) {
+            // Only principalPortion counts against outstanding — interestPortion never did.
+            const alreadyRepaidPrincipal = remainingRepayments.reduce((sum, r) => sum + r.principalPortion, 0)
+            if (loan.principal - alreadyRepaidPrincipal > 0) {
               await db.loans.update(loan.id, { status: 'active', updatedAt: Date.now() })
             }
           }
@@ -635,6 +636,7 @@ export async function deleteTransaction(id: string): Promise<void> {
     throw toAppDbError(error)
   }
 }
+
 // Re-exported so callers that already have a raw TransactionType (e.g.
 // loading a row from the table) can check support before calling into
 // the engine, without importing from the validation module directly.

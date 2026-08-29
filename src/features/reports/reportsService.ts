@@ -33,7 +33,7 @@ import {
   format,
 } from 'date-fns'
 import { APP_CONFIG } from '@/config/app.config'
-import type { Account, Category, DpsContribution, Fdr, FdrPayout, Loan, LoanRepayment, Transaction } from '@/types/entities'
+import type { Account, Category, DpsContribution, DpsPayout, Fdr, FdrPayout, Loan, LoanRepayment, Transaction } from '@/types/entities'
 
 export type ReportPeriodOption = 'this_month' | 'last_month' | 'last_3_months' | 'this_year' | 'last_year' | 'custom'
 
@@ -303,4 +303,206 @@ export function summarizeDeposits(
     fdrProfit += p.profitAmount
   }
   return { dpsContributions: dpsTotal, fdrPrincipalAdded: fdrPrincipal, fdrMaturityProfit: fdrProfit }
+}
+
+// ---------------------------------------------------------------------
+// CASH FLOW STATEMENT
+//
+// Unlike summarizeIncomeExpense above (which deliberately excludes
+// loan/dps/fdr transactions from ordinary Income/Expense — see file
+// header), a Cash Flow Statement counts every REAL movement of money
+// into or out of the household: loan received/given/repaid, DPS
+// installments, FDR investments, and maturity payouts. It still
+// excludes transfers between the user's own accounts and credit-card
+// bill payments — a bill payment just moves money to pay off a card,
+// it isn't new spending (the spend was already counted as an Expense
+// at purchase time, see transactionService.createCreditCardExpense),
+// so counting the payment too would double it.
+// ---------------------------------------------------------------------
+
+export interface CashFlowItem {
+  id: string
+  label: string
+  amount: number
+}
+
+export interface CashFlowSummary {
+  totalInflow: number
+  totalOutflow: number
+  netCashFlow: number
+  inflow: CashFlowItem[]
+  outflow: CashFlowItem[]
+}
+
+export function computeCashFlow(
+  transactions: Transaction[],
+  loans: Loan[],
+  loanRepayments: LoanRepayment[],
+  dpsContributions: DpsContribution[],
+  dpsPayouts: DpsPayout[],
+  fdrs: Fdr[],
+  fdrPayouts: FdrPayout[],
+  range: ReportRange
+): CashFlowSummary {
+  const currency = APP_CONFIG.defaultCurrency
+  const loansById = new Map(loans.map((l) => [l.id, l]))
+
+  let income = 0
+  let expense = 0
+  for (const t of transactions) {
+    if (t.currency !== currency) continue
+    if (t.type === 'income') income += t.amount
+    else if (t.type === 'expense') expense += t.amount
+  }
+
+  let loanReceived = 0
+  let loanGiven = 0
+  for (const loan of loans) {
+    if (loan.currency !== currency) continue
+    if (loan.startDate < range.start || loan.startDate > range.end) continue
+    if (loan.direction === 'taken') loanReceived += loan.principal
+    else loanGiven += loan.principal
+  }
+
+  let loanRepaidOut = 0 // taken: paying a lender back — real outflow
+  let loanRepaidIn = 0 // given: a borrower repaying you — real inflow
+  for (const r of loanRepayments) {
+    if (r.date < range.start || r.date > range.end) continue
+    const loan = loansById.get(r.loanId)
+    if (!loan || loan.currency !== currency) continue
+    if (loan.direction === 'taken') loanRepaidOut += r.amount
+    else loanRepaidIn += r.amount
+  }
+
+  let dpsInstallments = 0
+  for (const c of dpsContributions) {
+    if (c.date < range.start || c.date > range.end) continue
+    dpsInstallments += c.amount
+  }
+
+  let fdrInvested = 0
+  for (const fdr of fdrs) {
+    if (fdr.currency !== currency) continue
+    if (fdr.startDate < range.start || fdr.startDate > range.end) continue
+    fdrInvested += fdr.principal
+  }
+
+  let maturityPayouts = 0
+  for (const p of dpsPayouts) {
+    if (p.date < range.start || p.date > range.end) continue
+    maturityPayouts += p.amount
+  }
+  for (const p of fdrPayouts) {
+    if (p.date < range.start || p.date > range.end) continue
+    maturityPayouts += p.amount
+  }
+
+  const inflow: CashFlowItem[] = [
+    { id: 'income', label: 'Income', amount: income },
+    { id: 'loan_received', label: 'Loan Received', amount: loanReceived },
+    { id: 'loan_repaid_in', label: 'Loan Repayment Received', amount: loanRepaidIn },
+    { id: 'maturity', label: 'Maturity Payout', amount: maturityPayouts },
+  ].filter((i) => i.amount > 0)
+
+  const outflow: CashFlowItem[] = [
+    { id: 'expense', label: 'Expenses', amount: expense },
+    { id: 'dps', label: 'DPS Installment', amount: dpsInstallments },
+    { id: 'fdr', label: 'FDR Investment', amount: fdrInvested },
+    { id: 'loan_repaid_out', label: 'Loan Repayment', amount: loanRepaidOut },
+    { id: 'loan_given', label: 'Loan Given', amount: loanGiven },
+  ].filter((i) => i.amount > 0)
+
+  const totalInflow = inflow.reduce((s, i) => s + i.amount, 0)
+  const totalOutflow = outflow.reduce((s, i) => s + i.amount, 0)
+
+  return { totalInflow, totalOutflow, netCashFlow: totalInflow - totalOutflow, inflow, outflow }
+}
+
+// ---------------------------------------------------------------------
+// MONTHLY FINANCIAL SUMMARY
+//
+// Savings Rate here is Savings / Income (what fraction of income was
+// actually kept), distinct from the headline Reports "Savings Rate"
+// card above (Net / Income) — both are legitimate, different questions;
+// neither is invented, both are derived from the same underlying sums.
+// ---------------------------------------------------------------------
+
+export interface MonthlySummary {
+  monthLabel: string
+  monthStart: number
+  income: number
+  expenses: number
+  savings: number
+  investments: number // DPS installments + FDR principal invested this month
+  loanRepayments: number // only 'taken' loans — money actually leaving this month
+  netCashFlow: number // income - expenses
+  savingsRate: number | null // savings / income * 100, null when income is 0
+}
+
+export function computeMonthlySummary(
+  monthStart: number,
+  monthEnd: number,
+  transactions: Transaction[],
+  loans: Loan[],
+  loanRepayments: LoanRepayment[],
+  dpsContributions: DpsContribution[],
+  fdrs: Fdr[]
+): MonthlySummary {
+  const currency = APP_CONFIG.defaultCurrency
+  const inMonth = transactions.filter((t) => t.date >= monthStart && t.date <= monthEnd)
+  const { income, expense } = summarizeIncomeExpense(inMonth)
+  const netCashFlow = income - expense
+
+  const loansById = new Map(loans.map((l) => [l.id, l]))
+  let loanRepaymentsOut = 0
+  for (const r of loanRepayments) {
+    if (r.date < monthStart || r.date > monthEnd) continue
+    const loan = loansById.get(r.loanId)
+    if (!loan || loan.currency !== currency || loan.direction !== 'taken') continue
+    loanRepaymentsOut += r.amount
+  }
+
+  let investments = 0
+  for (const c of dpsContributions) {
+    if (c.date >= monthStart && c.date <= monthEnd) investments += c.amount
+  }
+  for (const fdr of fdrs) {
+    if (fdr.currency !== currency) continue
+    if (fdr.startDate >= monthStart && fdr.startDate <= monthEnd) investments += fdr.principal
+  }
+
+  const savings = netCashFlow - investments - loanRepaymentsOut
+
+  return {
+    monthLabel: format(monthStart, 'MMM yyyy'),
+    monthStart,
+    income,
+    expenses: expense,
+    savings,
+    investments,
+    loanRepayments: loanRepaymentsOut,
+    netCashFlow,
+    savingsRate: income > 0 ? (savings / income) * 100 : null,
+  }
+}
+
+/** `monthsBack` consecutive months ending with the current month, oldest first — so index i-1 is always "previous month" for index i. */
+export function computeMonthlySummaries(
+  monthsBack: number,
+  now: number,
+  transactions: Transaction[],
+  loans: Loan[],
+  loanRepayments: LoanRepayment[],
+  dpsContributions: DpsContribution[],
+  fdrs: Fdr[]
+): MonthlySummary[] {
+  const months = eachMonthOfInterval({
+    start: startOfMonth(subMonths(now, monthsBack - 1)),
+    end: startOfMonth(now),
+  })
+  return months.map((m) => {
+    const monthStart = startOfMonth(m).getTime()
+    const monthEnd = endOfMonth(m).getTime()
+    return computeMonthlySummary(monthStart, monthEnd, transactions, loans, loanRepayments, dpsContributions, fdrs)
+  })
 }

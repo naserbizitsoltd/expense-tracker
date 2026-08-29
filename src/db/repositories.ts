@@ -21,12 +21,13 @@ import type {
   FdrPayout,
   CreditCard,
   DebitCard,
-    Goal,
+  Goal,
   GoalTransaction,
   RecurringTransaction,
   AppSettings,
   DbMetadata,
   NotificationLogEntry,
+  AccountReconciliation,
 } from '@/types/entities'
 
 /**
@@ -94,6 +95,27 @@ export const accountRepository = {
     try {
       const accounts = await db.accounts.toArray()
       return accounts.filter((a) => !a.isArchived)
+    } catch (error) {
+      throw toAppDbError(error)
+    }
+  },
+}
+
+// Reconciliation history is never created/edited/deleted outside
+// accountReconciliationService.ts — this repository only exposes read
+// paths, same pattern as ledgerEntryRepository.
+export const reconciliationRepository = {
+  async getByAccount(accountId: string): Promise<AccountReconciliation[]> {
+    try {
+      return await db.reconciliations.where('accountId').equals(accountId).reverse().sortBy('date')
+    } catch (error) {
+      throw toAppDbError(error)
+    }
+  },
+  async getLastByAccount(accountId: string): Promise<AccountReconciliation | undefined> {
+    try {
+      const history = await db.reconciliations.where('accountId').equals(accountId).reverse().sortBy('date')
+      return history[0]
     } catch (error) {
       throw toAppDbError(error)
     }
@@ -296,6 +318,16 @@ export const dpsPayoutRepository = {
   async getByDps(dpsId: string): Promise<DpsPayout | undefined> {
     try {
       return await db.dpsPayouts.where('dpsId').equals(dpsId).first()
+    } catch (error) {
+      throw toAppDbError(error)
+    }
+  },
+  // Every DPS payout — powers the Cash Flow statement's "Maturity
+  // Payout" inflow total for the selected period, mirroring
+  // fdrPayoutRepository.getAll().
+  async getAll(): Promise<DpsPayout[]> {
+    try {
+      return await db.dpsPayouts.toArray()
     } catch (error) {
       throw toAppDbError(error)
     }

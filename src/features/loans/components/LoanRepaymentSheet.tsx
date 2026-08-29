@@ -54,6 +54,8 @@ export function LoanRepaymentSheet({ open, onClose, loan, outstanding, onRepaid 
   const amountInput = watch('amountInput')
   const amount = parseAmountInput(amountInput || '0', loan.currency) ?? 0
   const remaining = Math.max(0, outstanding - amount)
+  // Purely a preview of the auto-split repayLoan will apply — same math, shown before you submit.
+  const previewInterest = Math.max(0, amount - outstanding)
 
   function resetAndClose() {
     reset(loanRepaymentFormDefaults())
@@ -73,10 +75,6 @@ export function LoanRepaymentSheet({ open, onClose, loan, outstanding, onRepaid 
     const parsedAmount = parseAmountInput(values.amountInput, loan.currency)
     if (parsedAmount === null) {
       setSubmitError('Enter a valid amount.')
-      return
-    }
-    if (parsedAmount > outstanding) {
-      setSubmitError("Amount cannot exceed outstanding balance.")
       return
     }
 
@@ -136,9 +134,18 @@ export function LoanRepaymentSheet({ open, onClose, loan, outstanding, onRepaid 
               error={errors.amountInput?.message}
             />
             {amountInput && (
-              <p className="mt-1.5 px-1 text-xs text-muted-foreground">
-                Remaining after this payment: <span className="font-medium text-muted-foreground">{formatAmount(remaining, loan.currency)}</span>
-              </p>
+              <div className="mt-1.5 flex flex-col gap-0.5 px-1 text-xs text-muted-foreground">
+                <p>
+                  Remaining principal after this payment:{' '}
+                  <span className="font-medium text-muted-foreground">{formatAmount(remaining, loan.currency)}</span>
+                </p>
+                {previewInterest > 0 && (
+                  <p>
+                    Of this, <span className="font-medium text-muted-foreground">{formatAmount(previewInterest, loan.currency)}</span>{' '}
+                    is above the outstanding principal, so it's recorded as interest.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 

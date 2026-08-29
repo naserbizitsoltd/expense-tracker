@@ -7,7 +7,7 @@ import type {
   Budget,
   Loan,
   LoanRepayment,
-      Dps,
+  Dps,
   DpsContribution,
   DpsPayout,
   Fdr,
@@ -20,10 +20,11 @@ import type {
   AppSettings,
   DbMetadata,
   NotificationLogEntry,
+  AccountReconciliation,
 } from '@/types/entities'
 import { DB_METADATA_ID } from './id'
 
-export const SCHEMA_VERSION = 19
+export const SCHEMA_VERSION = 22
 
 export class AppDatabase extends Dexie {
   accounts!: Table<Account, string>
@@ -32,7 +33,7 @@ export class AppDatabase extends Dexie {
   budgets!: Table<Budget, string>
   loans!: Table<Loan, string>
   loanRepayments!: Table<LoanRepayment, string>
-        dps!: Table<Dps, string>
+  dps!: Table<Dps, string>
   dpsContributions!: Table<DpsContribution, string>
   dpsPayouts!: Table<DpsPayout, string>
   fdrs!: Table<Fdr, string>
@@ -46,6 +47,7 @@ export class AppDatabase extends Dexie {
   metadata!: Table<DbMetadata, string>
   ledgerEntries!: Table<LedgerEntry, string>
   notificationLog!: Table<NotificationLogEntry, string>
+  reconciliations!: Table<AccountReconciliation, string>
 
   constructor() {
     super('ExpenseTrackerDB')
@@ -382,7 +384,7 @@ export class AppDatabase extends Dexie {
             if (d.status === 'closed') d.status = 'archived'
           })
 
-                await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
+        await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
           schemaVersion: 13,
           lastMigrationAt: Date.now(),
           updatedAt: Date.now(),
@@ -396,7 +398,7 @@ export class AppDatabase extends Dexie {
     // returning principal is never counted as Income; only an
     // explicitly entered profit amount is ever added on top. No
     // existing table's data is touched; purely additive.
-        this.version(14)
+    this.version(14)
       .stores({
         dpsPayouts: 'id, dpsId, accountId, transactionId, date',
       })
@@ -440,7 +442,7 @@ export class AppDatabase extends Dexie {
             }
           )
 
-                await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
+        await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
           schemaVersion: 15,
           lastMigrationAt: Date.now(),
           updatedAt: Date.now(),
@@ -476,7 +478,7 @@ export class AppDatabase extends Dexie {
             if (p.type === undefined) p.type = 'maturity'
           })
 
-                await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
+        await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
           schemaVersion: 16,
           lastMigrationAt: Date.now(),
           updatedAt: Date.now(),
@@ -568,6 +570,106 @@ export class AppDatabase extends Dexie {
 
         await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
           schemaVersion: 19,
+          lastMigrationAt: Date.now(),
+          updatedAt: Date.now(),
+        })
+      })
+
+    // v20 — Account Reconciliation. Adds the `reconciliations` table: an
+    // auditable history of every "Reconcile Account" run (see
+    // services/accountReconciliationService.ts) — app balance vs actual
+    // balance, the difference, and the adjustment transaction (if any)
+    // that was written to correct it. Purely additive; no existing
+    // table's data is touched, and account.balance is never written
+    // directly by this feature — only via the same
+    // reconcileAccountBalanceCache path every other money movement uses.
+    this.version(20)
+      .stores({
+        reconciliations: 'id, accountId, date',
+      })
+      .upgrade(async (tx) => {
+        await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
+          schemaVersion: 20,
+          lastMigrationAt: Date.now(),
+          updatedAt: Date.now(),
+        })
+      })
+
+    // v21 — Loan processing fee + flexible interest/repayment. Adds
+    // `processingFee` to `loans` (deducted from the cash actually
+    // disbursed into the account on a 'taken' loan; never reduces
+    // `principal`, the amount still owed — see
+    // loanService.disburseLoan/getLoanAmountReceived) and
+    // `principalPortion` / `interestPortion` / `calculatedInterest` /
+    // `isInterestOverridden` to `loanRepayments`, so each repayment's
+    // real principal-vs-interest split is recorded instead of treating
+    // the whole `amount` as principal.
+    //
+    // Outstanding principal is now derived as
+    // `loan.principal - sum(principalPortion)` instead of
+    // `loan.principal - sum(amount)` (see loanService.getLoanOutstanding)
+    // — existing rows are backfilled with `principalPortion = amount`
+    // and `interestPortion = 0`, which reproduces the exact old
+    // behavior for every repayment recorded before this migration. No
+    // existing table's data is deleted.
+    this.version(21)
+      .stores({})
+      .upgrade(async (tx) => {
+        await tx
+          .table('loans')
+          .toCollection()
+          .modify((l: Omit<Loan, 'processingFee'> & { processingFee?: number }) => {
+            if (l.processingFee === undefined) l.processingFee = 0
+          })
+
+        await tx
+          .table('loanRepayments')
+          .toCollection()
+          .modify(
+            (
+              r: Omit<LoanRepayment, 'principalPortion' | 'interestPortion' | 'calculatedInterest' | 'isInterestOverridden'> & {
+                principalPortion?: number
+                interestPortion?: number
+                calculatedInterest?: number | null
+                isInterestOverridden?: boolean
+              }
+            ) => {
+              if (r.principalPortion === undefined) r.principalPortion = r.amount
+              if (r.interestPortion === undefined) r.interestPortion = 0
+              if (r.calculatedInterest === undefined) r.calculatedInterest = null
+              if (r.isInterestOverridden === undefined) r.isInterestOverridden = false
+            }
+          )
+
+        await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
+          schemaVersion: 21,
+          lastMigrationAt: Date.now(),
+          updatedAt: Date.now(),
+        })
+      })
+
+    // v22 — Loan tenure + interest rate type, interest calculator
+    // removed. Adds `tenureMonths` (explicit, user-entered loan
+    // duration — replaces deriving tenure from startDate/dueDate) and
+    // `interestRateType` ('monthly' | 'yearly' — how `interestRate`
+    // should be read) to `loans`. Existing rows are backfilled with
+    // tenureMonths = null and interestRateType = 'yearly' when they
+    // have an interestRate (matches the old hardcoded annual-rate
+    // assumption), or null when they don't. No existing data is
+    // deleted.
+    this.version(22)
+      .stores({})
+      .upgrade(async (tx) => {
+        await tx
+          .table('loans')
+          .toCollection()
+          .modify((l: Omit<Loan, 'tenureMonths' | 'interestRateType'> & { tenureMonths?: number | null; interestRateType?: 'monthly' | 'yearly' | null }) => {
+            if (l.tenureMonths === undefined) l.tenureMonths = null
+            if (l.interestRateType === undefined) l.interestRateType = l.interestRate != null ? 'yearly' : null
+          })
+
+        await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
+          schemaVersion: 22,
           lastMigrationAt: Date.now(),
           updatedAt: Date.now(),
         })

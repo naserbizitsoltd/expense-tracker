@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -172,7 +170,7 @@ export function ReportsPage({ activeNav, onNavChange, onOpenMenu }: ReportsPageP
               <SectionHeader title="Trend" />
               <Card>
                 <ResponsiveContainer width="100%" height={180}>
-                  <LineChart data={reports.trend} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                  <BarChart data={reports.trend} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                     <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={36} />
@@ -180,23 +178,19 @@ export function ReportsPage({ activeNav, onNavChange, onOpenMenu }: ReportsPageP
                       contentStyle={tooltipStyle()}
                       formatter={(value) => formatAmount(Math.round(Number(value) * 100), currency)}
                     />
-                    <Line
-                      type="monotone"
+                    <Bar
                       dataKey={(d: { income: number }) => toChartValue(d.income)}
                       name="Income"
-                      stroke="var(--success)"
-                      strokeWidth={2}
-                      dot={false}
+                      fill="var(--success)"
+                      radius={[4, 4, 0, 0]}
                     />
-                    <Line
-                      type="monotone"
+                    <Bar
                       dataKey={(d: { expense: number }) => toChartValue(d.expense)}
                       name="Expense"
-                      stroke="var(--danger)"
-                      strokeWidth={2}
-                      dot={false}
+                      fill="var(--danger)"
+                      radius={[4, 4, 0, 0]}
                     />
-                  </LineChart>
+                  </BarChart>
                 </ResponsiveContainer>
               </Card>
             </section>

@@ -21,6 +21,7 @@ import { DpsForm } from '../components/DpsForm'
 import { DpsContributionSheet } from '../components/DpsContributionSheet'
 import { DpsPayoutSheet } from '../components/DpsPayoutSheet'
 import { DpsContributionRow } from '../components/DpsContributionRow'
+import { DpsMaturityProjectionCard } from '../components/DpsMaturityProjectionCard' // Added import
 import { dpsRepository } from '@/db'
 import { archiveDps, restoreDps } from '@/services/dpsService'
 import { dpsStatusLabel, dpsStatusBadgeVariant } from '../dpsConfig'
@@ -210,6 +211,11 @@ function DpsDetails({ dpsId, onBack }: { dpsId: string; onBack: () => void }) {
           </div>
           <p className="mt-1.5 text-xs font-medium text-muted-foreground">{progress?.percentComplete ?? 0}%</p>
         </Card>
+
+        {/* Added DpsMaturityProjectionCard - only for active/paused DPS */}
+        {!isCompleted && !isPaidOut && !isArchived && (
+          <DpsMaturityProjectionCard dps={dps} contributions={contributions} />
+        )}
 
         {(isCompleted || isPaidOut) && (
           <Card padding="none" className="flex flex-col divide-y divide-border">

@@ -1,4 +1,7 @@
+// src/types/entities.ts
+
 import type { CurrencyCode } from './money'
+export type { CurrencyCode } // <-- ADD THIS LINE - re-exports CurrencyCode for other files
 
 export type AccountType = 'cash' | 'bank' | 'mobile_wallet' | 'card' | 'savings' | 'other'
 
@@ -90,21 +93,26 @@ export interface Budget {
   createdAt: number
   updatedAt: number
 }
+
 export type LoanDirection = 'given' | 'taken' // given = lent to someone, taken = borrowed from someone
 export type LoanStatus = 'active' | 'closed' | 'defaulted'
+export type LoanInterestRateType = 'monthly' | 'yearly' // how interestRate should be read — 1.59 + 'monthly' vs 1.59 + 'yearly' are very different numbers
 
 export interface Loan {
   id: string
   direction: LoanDirection
   counterpartyName: string
-  principal: number // integer, smallest unit
+  principal: number // integer, smallest unit — the full amount owed, never reduced by processingFee
   currency: CurrencyCode
-  interestRate: number | null // percentage, e.g. 5.5 — not a smallest-unit amount
+  interestRate: number | null // percentage, e.g. 5.5 — interpreted per interestRateType
+  interestRateType: LoanInterestRateType | null // null only for loans with no interestRate
+  tenureMonths: number | null // loan duration in months, user-entered — replaces deriving tenure from startDate/dueDate
   accountId: string // account the money moved to/from
   startDate: number
   dueDate: number | null
   status: LoanStatus
   notes: string
+  processingFee: number // integer, smallest unit, >= 0 — deducted from the cash actually disbursed on a 'taken' loan; NEVER reduces `principal` (see loanService.getLoanAmountReceived). Always 0 for 'given' loans.
   createdAt: number
   updatedAt: number
 }
@@ -113,12 +121,17 @@ export interface Loan {
 // loan (taken: money leaving an account back to the lender; given:
 // money coming back in from the borrower). Always paired 1:1 with a
 // Transaction (type 'loan') that recorded the actual ledger movement
-// against `accountId` — mirrors GoalTransaction. Outstanding is never
-// stored — it's always principal minus the sum of these.
+// against `accountId` — mirrors GoalTransaction. Outstanding principal
+// is never stored — it's always principal minus the sum of
+// `principalPortion` (NOT `amount` — interestPortion never reduces it).
 export interface LoanRepayment {
   id: string
   loanId: string
-  amount: number // integer, smallest unit, always positive
+  amount: number // integer, smallest unit, always positive — the real total paid; equals principalPortion + interestPortion
+  principalPortion: number // integer, smallest unit — the slice of `amount` that pays down the loan's outstanding principal
+  interestPortion: number // integer, smallest unit — the slice of `amount` treated as interest; never reduces outstanding principal
+  calculatedInterest: number | null // integer, smallest unit — the system-suggested interest shown to the user at repayment time (see loanInterestService.estimateDefaultInterestPortion). Snapshot only, never recalculated after the fact; null when the loan had no interest rate to estimate from
+  isInterestOverridden: boolean // true when interestPortion was user-entered/confirmed and differs from calculatedInterest
   accountId: string // account money moved from (taken) or to (given)
   transactionId: string // the Transaction (type 'loan') that recorded the real ledger movement
   notes: string
@@ -368,6 +381,27 @@ export interface NotificationLogEntry {
   body: string
   dueDate: number // epoch ms of the underlying due/maturity/target date this reminder relates to
   shownAt: number
+}
+
+// Auditable history of a single account reconciliation — comparing the
+// app's computed balance (see balanceService.getAccountBalance) against
+// the account's real-world balance at a point in time. When the two
+// differ, a single 'adjustment' Transaction (mirrors goalService.ts's
+// pattern) is written to bring the ledger back in line — reconciliation
+// NEVER writes directly to account.balance. transactionId is null only
+// when appBalance already matched actualBalance and no adjustment was
+// needed; the record is still kept so reconciliation history stays complete.
+export interface AccountReconciliation {
+  id: string
+  accountId: string
+  date: number // epoch ms, when the reconciliation was performed
+  appBalance: number // integer, smallest unit — the app's computed balance just before this reconciliation
+  actualBalance: number // integer, smallest unit — the real-world balance the user entered
+  difference: number // signed integer, smallest unit — actualBalance - appBalance
+  adjustmentAmount: number // signed integer, smallest unit — same as difference; 0 when no adjustment was made
+  transactionId: string | null // the Transaction (type 'adjustment') that recorded the real ledger movement, or null if difference was 0
+  note: string
+  createdAt: number
 }
 
 // Singleton row, fixed id DB_METADATA_ID (see src/db/id.ts)

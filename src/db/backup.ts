@@ -16,6 +16,11 @@ export const BACKUP_VERSION = 1
 // (referenced entities before the records that point at them). Kept as
 // an explicit list — rather than db.tables.map(...) — so a future
 // schema table is never silently included/excluded without a decision.
+//
+// NOTE: `reconciliations` (AccountReconciliation) exists in the schema
+// but is NOT in this list — it isn't currently backed up. Flagging
+// this rather than silently fixing it, since adding it changes what a
+// restore replaces; see the message at the end of this response.
 const BACKUP_TABLES = [
   'accounts',
   'categories',
@@ -39,13 +44,50 @@ const BACKUP_TABLES = [
   'metadata',
 ] as const
 
-type BackupTableName = (typeof BACKUP_TABLES)[number]
+export type BackupTableName = (typeof BACKUP_TABLES)[number]
+
+// Friendly labels for the tables worth surfacing to the user in export/
+// restore summaries. Tables not listed here (categories, debitCards,
+// recurringTransactions, ledgerEntries, contribution/payout rows,
+// notificationLog, appSettings, metadata) are still backed up and
+// counted in full, they're just internal/derived and not worth a line
+// of their own in the summary UI.
+export const BACKUP_TABLE_LABELS: Partial<Record<BackupTableName, string>> = {
+  accounts: 'Accounts',
+  transactions: 'Transactions',
+  loans: 'Loans',
+  dps: 'DPS',
+  fdrs: 'FDR',
+  goals: 'Goals',
+  budgets: 'Budgets',
+  creditCards: 'Credit Cards',
+}
+
+// The subset of BACKUP_TABLES shown as headline rows in the export/
+// restore summary UI, in display order.
+export const BACKUP_SUMMARY_TABLES: BackupTableName[] = [
+  'accounts',
+  'transactions',
+  'loans',
+  'dps',
+  'fdrs',
+  'goals',
+  'budgets',
+  'creditCards',
+]
+
+export type BackupCounts = Record<BackupTableName, number>
 
 export interface BackupMeta {
   backupVersion: number
   exportedAt: number
   appVersion: string
   schemaVersion: number
+  // Added alongside verification support. Optional so backup files
+  // exported before this feature existed still pass validation —
+  // they simply can't be checksum-verified or count-compared.
+  counts?: BackupCounts
+  checksum?: string
 }
 
 export type BackupData = Record<BackupTableName, unknown[]>
@@ -55,16 +97,147 @@ export interface BackupPayload {
   data: BackupData
 }
 
+export interface BackupVerificationIssue {
+  severity: 'error' | 'warning'
+  table?: BackupTableName
+  message: string
+}
+
+export interface BackupVerificationResult {
+  // No 'error'-severity issues. A result can still be `ok` while
+  // carrying 'warning' issues (e.g. a newly-added live table this
+  // backup format doesn't know about yet).
+  ok: boolean
+  // true/false when a checksum was present to check against, null when
+  // there was nothing to compare (e.g. an older backup with no stored
+  // checksum).
+  checksumValid: boolean | null
+  issues: BackupVerificationIssue[]
+}
+
+export interface BackupExportResult {
+  filename: string
+  exportedAt: number
+  counts: BackupCounts
+  checksum: string
+  verification: BackupVerificationResult
+}
+
+export interface BackupPreview {
+  meta: BackupMeta
+  counts: BackupCounts
+  verification: BackupVerificationResult
+}
+
 function tableOf(name: BackupTableName) {
   return db.table(name)
 }
 
+function computeCounts(data: BackupData): BackupCounts {
+  const counts = {} as BackupCounts
+  for (const name of BACKUP_TABLES) {
+    counts[name] = data[name]?.length ?? 0
+  }
+  return counts
+}
+
+// SHA-256 over the table data only (never the meta block, which would
+// otherwise have to contain its own checksum). Tables are hashed in
+// the fixed BACKUP_TABLES order so the digest only depends on content,
+// not on incidental JSON key ordering from the meta object.
+async function computeChecksum(data: BackupData): Promise<string> {
+  const canonical = JSON.stringify(BACKUP_TABLES.map((name) => data[name] ?? []))
+  const bytes = new TextEncoder().encode(canonical)
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
 /**
- * Gathers every table into a single JSON-serializable payload and
- * triggers a browser download. Read-only — never touches the database
- * beyond stamping `lastBackupAt` on success.
+ * Structural + integrity verification that never throws. Used both
+ * right after an export (self-check against the counts we just read
+ * from the DB) and before a restore (checking a file the user picked,
+ * with no expected counts to compare against). Reports every problem
+ * it finds rather than stopping at the first one.
  */
-export async function exportBackup(): Promise<string> {
+async function verifyBackup(payload: BackupPayload, expectedCounts?: BackupCounts): Promise<BackupVerificationResult> {
+  const issues: BackupVerificationIssue[] = []
+
+  for (const name of BACKUP_TABLES) {
+    const collection = payload.data[name]
+    if (!Array.isArray(collection)) {
+      issues.push({ severity: 'error', table: name, message: `The "${name}" section is missing or malformed.` })
+      continue
+    }
+    const invalidCount = collection.filter(
+      (record) => !record || typeof record !== 'object' || typeof (record as { id?: unknown }).id !== 'string'
+    ).length
+    if (invalidCount > 0) {
+      issues.push({
+        severity: 'error',
+        table: name,
+        message: `${invalidCount} record(s) in "${name}" are missing a valid id.`,
+      })
+    }
+  }
+
+  // Guard against a live table that isn't covered by BACKUP_TABLES at
+  // all (e.g. a new feature's table added to the schema but never
+  // wired into the backup list) — this is how data gets "accidentally
+  // omitted" from every future backup without anyone noticing.
+  const knownTables = new Set<string>(BACKUP_TABLES)
+  for (const table of db.tables) {
+    if (!knownTables.has(table.name)) {
+      issues.push({
+        severity: 'warning',
+        message: `The "${table.name}" table exists in the database but isn't included in backups yet.`,
+      })
+    }
+  }
+
+  if (expectedCounts) {
+    for (const name of BACKUP_TABLES) {
+      const actual = payload.data[name]?.length ?? 0
+      const expected = expectedCounts[name] ?? 0
+      if (actual !== expected) {
+        issues.push({
+          severity: 'error',
+          table: name,
+          message: `Expected ${expected} record(s) in "${name}" but found ${actual}.`,
+        })
+      }
+    }
+  }
+
+  let checksumValid: boolean | null = null
+  if (payload.meta.checksum) {
+    const recomputed = await computeChecksum(payload.data)
+    checksumValid = recomputed === payload.meta.checksum
+    if (!checksumValid) {
+      issues.push({
+        severity: 'error',
+        message: 'The checksum does not match the backup contents — the file may be corrupted or was edited.',
+      })
+    }
+  }
+
+  return {
+    ok: checksumValid !== false && issues.every((issue) => issue.severity !== 'error'),
+    checksumValid,
+    issues,
+  }
+}
+
+/**
+ * Gathers every table into a single JSON-serializable payload, verifies
+ * it (structure, ids, checksum round-trip, no omitted tables), and
+ * triggers a browser download. Read-only against the database beyond
+ * stamping `lastBackupAt` on success — a failed verification still
+ * downloads the file (it's already correct data, just flagged) but is
+ * reported back so the UI can warn instead of claiming success.
+ */
+export async function exportBackup(): Promise<BackupExportResult> {
   try {
     const data = {} as BackupData
     await db.transaction('r', BACKUP_TABLES.map(tableOf), async () => {
@@ -73,29 +246,52 @@ export async function exportBackup(): Promise<string> {
       }
     })
 
+    const counts = computeCounts(data)
+    const checksum = await computeChecksum(data)
+    const exportedAt = Date.now()
+
     const payload: BackupPayload = {
       meta: {
         backupVersion: BACKUP_VERSION,
-        exportedAt: Date.now(),
+        exportedAt,
         appVersion: 'unknown',
         schemaVersion: SCHEMA_VERSION,
+        counts,
+        checksum,
       },
       data,
     }
 
     const json = JSON.stringify(payload, null, 2)
+
+    // Round-trip through JSON once more before calling it verified —
+    // this is what would catch a value that doesn't survive
+    // JSON.stringify/parse cleanly (rather than trusting the in-memory
+    // object we already have).
+    let verification: BackupVerificationResult
+    try {
+      const reparsed = JSON.parse(json) as BackupPayload
+      verification = await verifyBackup(reparsed, counts)
+    } catch {
+      verification = {
+        ok: false,
+        checksumValid: false,
+        issues: [{ severity: 'error', message: 'The backup failed to round-trip through JSON after export.' }],
+      }
+    }
+
     const filename = `expense-tracker-backup-${formatDateForFilename(new Date())}.json`
     downloadJson(json, filename)
 
     // Best-effort — a failure here shouldn't undo an export the user
     // already has on disk.
     try {
-      await db.metadata.update(DB_METADATA_ID, { lastBackupAt: Date.now(), updatedAt: Date.now() })
+      await db.metadata.update(DB_METADATA_ID, { lastBackupAt: exportedAt, updatedAt: Date.now() })
     } catch {
       // ignore
     }
 
-    return filename
+    return { filename, exportedAt, counts, checksum, verification }
   } catch (error) {
     throw toAppDbError(error)
   }
@@ -191,11 +387,25 @@ function validateBackupPayload(parsed: unknown): BackupPayload {
 }
 
 /**
+ * Structurally-validates a backup file and returns a preview — counts
+ * per table plus a non-throwing verification report (checksum match,
+ * any warnings) — so the UI can show the user exactly what a restore
+ * would replace their data with before they confirm anything.
+ */
+export async function previewBackup(file: File): Promise<{ payload: BackupPayload; preview: BackupPreview }> {
+  const payload = await readAndValidateBackupFile(file)
+  const counts = payload.meta.counts ?? computeCounts(payload.data)
+  const verification = await verifyBackup(payload)
+  return { payload, preview: { meta: payload.meta, counts, verification } }
+}
+
+/**
  * Replaces all current application data with the contents of a
  * validated backup. Runs as one Dexie transaction across every table:
  * either every table is cleared and refilled, or (on any error) none
  * of them are touched — Dexie automatically rolls back the whole
- * transaction if the callback throws.
+ * transaction if the callback throws, so a failed restore never leaves
+ * the database partially overwritten.
  */
 export async function restoreBackup(payload: BackupPayload): Promise<void> {
   try {

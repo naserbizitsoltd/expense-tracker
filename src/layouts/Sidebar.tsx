@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import {
   Tags, ChevronRight, ChevronLeft, Repeat, PiggyBank, Target, CreditCard,
-  Landmark, HandCoins, Wallet2, Lock, Layers, Bell, X,
+  Landmark, HandCoins, Wallet2, Lock, Layers, Bell, X, Scale, ArrowLeftRight, CalendarRange, CalendarDays,
+  HeartPulse,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
@@ -18,10 +19,20 @@ interface SidebarProps {
   onOpenDps: () => void
   onOpenFdr: () => void
   onOpenDeposits: () => void
+  onOpenNetWorth: () => void
+  onOpenCashFlow: () => void
+  onOpenMonthlySummary: () => void
+  onOpenFinancialCalendar: () => void
+  onOpenFinancialHealth: () => void
   onOpenSettings: () => void
 }
 
 const ITEMS = (props: SidebarProps) => [
+  { icon: Scale, label: 'Net Worth', onClick: props.onOpenNetWorth },
+  { icon: HeartPulse, label: 'Financial Health', onClick: props.onOpenFinancialHealth },
+  { icon: ArrowLeftRight, label: 'Cash Flow', onClick: props.onOpenCashFlow },
+  { icon: CalendarRange, label: 'Monthly Summary', onClick: props.onOpenMonthlySummary },
+  { icon: CalendarDays, label: 'Financial Calendar', onClick: props.onOpenFinancialCalendar },
   { icon: Tags, label: 'Categories', onClick: props.onOpenCategories },
   { icon: Repeat, label: 'Recurring', onClick: props.onOpenRecurring },
   { icon: PiggyBank, label: 'Budgets', onClick: props.onOpenBudgets },

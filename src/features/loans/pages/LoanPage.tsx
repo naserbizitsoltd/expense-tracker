@@ -24,6 +24,7 @@ import { loanRepository } from '@/db'
 import { loanDirectionLabel, loanOutstandingLabel } from '../loanConfig'
 import { formatAmount } from '@/lib/money'
 import { APP_CONFIG } from '@/config/app.config'
+import { getLoanAmountReceived } from '@/services/loanService'
 
 interface LoanPageProps {
   onBack: () => void
@@ -131,7 +132,7 @@ function LoanList({ onBack, onOpenLoan }: { onBack: () => void; onOpenLoan: (id:
 
 function LoanDetails({ loanId, onBack }: { loanId: string; onBack: () => void }) {
   const { loan, isLoading } = useLoan(loanId)
-  const { repayments, totalRepaid, outstanding, isLoading: isRepaymentsLoading } = useLoanRepayments(loanId)
+  const { repayments, principalPaid, interestPaid, outstanding, isLoading: isRepaymentsLoading } = useLoanRepayments(loanId)
   const { accounts } = useAccounts()
   const { showToast } = useToast()
   const [repayOpen, setRepayOpen] = useState(false)
@@ -155,8 +156,13 @@ function LoanDetails({ loanId, onBack }: { loanId: string; onBack: () => void })
 
   const account = accounts.find((a) => a.id === loan.accountId)
   const accountsById = new Map(accounts.map((a) => [a.id, a]))
-  const progressPct = loan.principal > 0 ? Math.min(100, Math.round((totalRepaid / loan.principal) * 100)) : 0
+  const progressPct = loan.principal > 0 ? Math.min(100, Math.round((principalPaid / loan.principal) * 100)) : 0
   const isClosed = loan.status === 'closed'
+
+  const amountReceived = getLoanAmountReceived(loan)
+  const remainingPrincipal = Math.max(0, loan.principal - principalPaid)
+  const totalCost = loan.processingFee + interestPaid
+  const hasCost = loan.processingFee > 0 || interestPaid > 0
 
   async function deleteLoan() {
     try {
@@ -184,7 +190,7 @@ function LoanDetails({ loanId, onBack }: { loanId: string; onBack: () => void })
         <Card>
           <div className="flex items-baseline justify-between">
             <p className="text-sm font-semibold tabular-nums text-foreground">
-              {formatAmount(totalRepaid, loan.currency)} repaid
+              {formatAmount(principalPaid, loan.currency)} repaid
             </p>
             <p className="text-xs text-muted-foreground">of {formatAmount(loan.principal, loan.currency)}</p>
           </div>
@@ -194,13 +200,42 @@ function LoanDetails({ loanId, onBack }: { loanId: string; onBack: () => void })
           <p className="mt-1.5 text-xs font-medium text-muted-foreground">{progressPct}%</p>
         </Card>
 
+        {loan.direction === 'taken' && (
+          <Card padding="none" className="flex flex-col divide-y divide-border">
+            <p className="px-4 pt-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Borrowing</p>
+            <DetailRow label="Original principal" value={formatAmount(loan.principal, loan.currency)} />
+            <DetailRow label="Processing fee" value={formatAmount(loan.processingFee, loan.currency)} />
+            <DetailRow label="Amount received" value={formatAmount(amountReceived, loan.currency)} />
+          </Card>
+        )}
+
         <Card padding="none" className="flex flex-col divide-y divide-border">
-          <DetailRow label="Original principal" value={formatAmount(loan.principal, loan.currency)} />
-          <DetailRow label="Total repaid" value={formatAmount(totalRepaid, loan.currency)} />
+          <p className="px-4 pt-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Repayment</p>
+          <DetailRow label="Principal paid" value={formatAmount(principalPaid, loan.currency)} />
+          <DetailRow label="Interest paid" value={formatAmount(interestPaid, loan.currency)} />
+          <DetailRow label="Remaining principal" value={formatAmount(remainingPrincipal, loan.currency)} />
+          <DetailRow label="Total paid" value={formatAmount(principalPaid + interestPaid, loan.currency)} />
+          <DetailRow label="Remaining payable" value={formatAmount(outstanding, loan.currency)} />
+        </Card>
+
+        {hasCost && (
+          <Card padding="none" className="flex flex-col divide-y divide-border">
+            <p className="px-4 pt-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cost</p>
+            <DetailRow label="Processing fee" value={formatAmount(loan.processingFee, loan.currency)} />
+            <DetailRow label="Interest" value={formatAmount(interestPaid, loan.currency)} />
+            <DetailRow label="Total borrowing cost" value={formatAmount(totalCost, loan.currency)} />
+          </Card>
+        )}
+
+        <Card padding="none" className="flex flex-col divide-y divide-border">
           <DetailRow label="Account" value={account?.name ?? '—'} />
           <DetailRow label="Start date" value={format(loan.startDate, 'MMM d, yyyy')} />
           <DetailRow label="Due date" value={loan.dueDate ? format(loan.dueDate, 'MMM d, yyyy') : '—'} />
-          <DetailRow label="Interest rate" value={loan.interestRate != null ? `${loan.interestRate}%` : '—'} />
+          <DetailRow label="Tenure" value={loan.tenureMonths != null ? `${loan.tenureMonths} months` : '—'} />
+          <DetailRow
+            label="Interest rate"
+            value={loan.interestRate != null ? `${loan.interestRate}% / ${loan.interestRateType === 'monthly' ? 'month' : 'year'}` : '—'}
+          />
           <DetailRow label="Status" value={isClosed ? 'Closed' : loan.status === 'defaulted' ? 'Defaulted' : 'Active'} />
         </Card>
 

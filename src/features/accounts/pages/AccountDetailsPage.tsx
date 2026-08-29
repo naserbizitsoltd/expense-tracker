@@ -1,14 +1,18 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Pencil, Archive, ArchiveRestore, Trash2, Receipt, TrendingUp, TrendingDown } from 'lucide-react'
+import { Pencil, Archive, ArchiveRestore, Trash2, Receipt, TrendingUp, TrendingDown, Scale, History } from 'lucide-react'
 import { AppShell } from '@/layouts/AppShell'
 import { Avatar, Button, IconButton, Card, BalanceCard, BottomSheet, ConfirmationDialog, EmptyState, LoadingState, useToast } from '@/components/ui'
 import { AccountForm } from '../components/AccountForm'
+import { ReconcileAccountSheet } from '../components/ReconcileAccountSheet'
+import { ReconciliationHistorySheet } from '../components/ReconciliationHistorySheet'
 import { useAccount } from '../useAccounts'
 import { useAccountTransactions } from '../useAccountTransactions'
+import { useReconciliationHistory } from '../useReconciliation'
 import { AccountTransactionRow } from '../components/AccountTransactionRow'
 import { accountRepository } from '@/db'
 import { deleteTransaction } from '@/services/transactionService'
+import { isAccountReconcilable } from '@/services/accountReconciliationService'
 import { getAccountIcon } from '../accountConfig'
 import { formatAmount } from '@/lib/money'
 
@@ -18,18 +22,21 @@ interface AccountDetailsPageProps {
 }
 
 export function AccountDetailsPage({ accountId, onBack }: AccountDetailsPageProps) {
-    const { account, isLoading } = useAccount(accountId)
+  const { account, isLoading } = useAccount(accountId)
+  const { showToast } = useToast() // <-- Added this line
   const {
     items: transactionItems,
     totalIncome,
     totalExpense,
     isLoading: isTransactionsLoading,
   } = useAccountTransactions(accountId)
-  const { showToast } = useToast()
   const [editOpen, setEditOpen] = useState(false)
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null)
+  const [reconcileOpen, setReconcileOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const { lastReconciledAt } = useReconciliationHistory(accountId)
   const transactionCount: number | null = isTransactionsLoading ? null : transactionItems.length
 
   if (isLoading) {
@@ -82,6 +89,7 @@ export function AccountDetailsPage({ accountId, onBack }: AccountDetailsPageProp
       setTransactionToDelete(null)
     }
   }
+
   return (
     <AppShell
       title={acc.name}
@@ -92,7 +100,7 @@ export function AccountDetailsPage({ accountId, onBack }: AccountDetailsPageProp
         </IconButton>
       }
     >
-            <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6">
         <div className="flex flex-col items-center gap-3 py-1 text-center">
           <Avatar icon={<Icon className="h-7 w-7" />} color={acc.color} size="xl" />
           <p className="text-sm font-semibold text-foreground">{acc.name}</p>
@@ -126,13 +134,16 @@ export function AccountDetailsPage({ accountId, onBack }: AccountDetailsPageProp
           </Card>
         </div>
 
-                <Card padding="none" className="flex flex-col divide-y divide-border">
+        <Card padding="none" className="flex flex-col divide-y divide-border">
           <DetailRow label="Type" value={typeLabel(acc.type)} />
           {acc.provider && <DetailRow label="Provider" value={acc.provider} />}
           <DetailRow label="Opening balance" value={formatAmount(acc.openingBalance, acc.currency)} />
           <DetailRow label="Currency" value={acc.currency} />
           {acc.accountNumber && <DetailRow label="Account number" value={acc.accountNumber} />}
           <DetailRow label="Status" value={acc.isArchived ? 'Archived' : 'Active'} />
+          {isAccountReconcilable(acc) && (
+            <DetailRow label="Last reconciled" value={lastReconciledAt ? format(lastReconciledAt, 'MMM d, yyyy') : 'Never'} />
+          )}
           <DetailRow label="Created" value={format(acc.createdAt, 'MMM d, yyyy')} />
           <DetailRow
             label="Last activity"
@@ -173,7 +184,18 @@ export function AccountDetailsPage({ accountId, onBack }: AccountDetailsPageProp
             </Card>
           )}
         </section>
-                <div className="flex flex-col gap-2 pb-2">
+
+        <div className="flex flex-col gap-2 pb-2">
+          {isAccountReconcilable(acc) && !acc.isArchived && (
+            <Button variant="secondary" onClick={() => setReconcileOpen(true)}>
+              <Scale className="h-4 w-4" /> Reconcile account
+            </Button>
+          )}
+          {isAccountReconcilable(acc) && (
+            <Button variant="ghost" onClick={() => setHistoryOpen(true)}>
+              <History className="h-4 w-4" /> Reconciliation history
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => setEditOpen(true)}>
             <Pencil className="h-4 w-4" /> Edit account
           </Button>
@@ -196,9 +218,20 @@ export function AccountDetailsPage({ accountId, onBack }: AccountDetailsPageProp
         </div>
       </div>
 
-            <BottomSheet open={editOpen} onClose={() => setEditOpen(false)} title="Edit Account">
+      <BottomSheet open={editOpen} onClose={() => setEditOpen(false)} title="Edit Account">
         <AccountForm account={acc} onDone={() => setEditOpen(false)} hasTransactions={hasHistory} />
       </BottomSheet>
+
+      <ReconcileAccountSheet
+        open={reconcileOpen}
+        onClose={() => setReconcileOpen(false)}
+        account={acc}
+        onReconciled={(record) =>
+          showToast(record.difference === 0 ? 'Reconciliation recorded — no adjustment needed' : 'Account reconciled', 'success')
+        }
+      />
+
+      <ReconciliationHistorySheet open={historyOpen} onClose={() => setHistoryOpen(false)} account={acc} />
 
       <ConfirmationDialog
         open={archiveConfirmOpen}

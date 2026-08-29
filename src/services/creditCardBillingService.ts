@@ -105,3 +105,23 @@ export function getCreditCardBillingInfo(card: CreditCard, from: number = Date.n
   }
   return { ...base, status: 'due', statusLabel: `Due in ${pluralDays(daysRemaining)}` }
 }
+
+/**
+ * Every payment due date landing inside [rangeStart, rangeEnd] — one per
+ * monthly billing cycle, clamped to each month's day range the same way
+ * getCurrentDueDate/onDay do. Read-only; used by the Financial Calendar
+ * to preview due dates across whatever month is being viewed, not just
+ * the current cycle.
+ */
+export function getDueDatesInRange(card: CreditCard, rangeStart: number, rangeEnd: number): number[] {
+  const dates: number[] = []
+  let cursor = startOfDay(rangeStart)
+  let guard = 0
+  while (cursor.getTime() <= rangeEnd && guard < 60) {
+    const due = onDay(cursor, card.dueDay).getTime()
+    if (due >= rangeStart && due <= rangeEnd) dates.push(due)
+    cursor = addMonths(cursor, 1)
+    guard++
+  }
+  return dates
+}
