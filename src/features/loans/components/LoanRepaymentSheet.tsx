@@ -27,8 +27,6 @@ interface LoanRepaymentSheetProps {
   onRepaid: (repayment: LoanRepayment, account: Account) => void
 }
 
-// Wrapped in singleFlight once, at module scope — same pattern as
-// CreditCardPaymentSheet's submitPayment.
 const submitRepayment = singleFlight(repayLoan)
 
 export function LoanRepaymentSheet({ open, onClose, loan, outstanding, onRepaid }: LoanRepaymentSheetProps) {
@@ -118,15 +116,15 @@ export function LoanRepaymentSheet({ open, onClose, loan, outstanding, onRepaid 
     <>
       <BottomSheet open={open} onClose={resetAndClose} title={loan.direction === 'taken' ? 'Repay Loan' : 'Receive Repayment'}>
         <form onSubmit={onValidated} className="flex max-h-[70vh] flex-col gap-5 overflow-y-auto pb-1 pr-0.5">
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5">
-            <p className="text-sm font-medium text-white">{loan.counterpartyName}</p>
-            <p className="mt-1 text-xs text-white/40">Current outstanding</p>
-            <p className="text-lg font-semibold tabular-nums text-white">{formatAmount(outstanding, loan.currency)}</p>
+          <div className="rounded-2xl border border-border bg-surface px-4 py-3.5">
+            <p className="text-sm font-medium text-foreground">{loan.counterpartyName}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Current outstanding</p>
+            <p className="text-lg font-semibold tabular-nums text-foreground">{formatAmount(outstanding, loan.currency)}</p>
           </div>
 
           <div>
             <div className="mb-1.5 flex items-center justify-between px-1">
-              <label className="text-xs font-medium text-white/50">Payment amount</label>
+              <label className="text-xs font-medium text-muted-foreground">Payment amount</label>
               <button type="button" onClick={payFullAmount} className="text-xs font-semibold text-emerald-400">
                 Pay Full Amount
               </button>
@@ -138,8 +136,8 @@ export function LoanRepaymentSheet({ open, onClose, loan, outstanding, onRepaid 
               error={errors.amountInput?.message}
             />
             {amountInput && (
-              <p className="mt-1.5 px-1 text-xs text-white/40">
-                Remaining after this payment: <span className="font-medium text-white/70">{formatAmount(remaining, loan.currency)}</span>
+              <p className="mt-1.5 px-1 text-xs text-muted-foreground">
+                Remaining after this payment: <span className="font-medium text-muted-foreground">{formatAmount(remaining, loan.currency)}</span>
               </p>
             )}
           </div>
@@ -147,9 +145,9 @@ export function LoanRepaymentSheet({ open, onClose, loan, outstanding, onRepaid 
           <button
             type="button"
             onClick={() => setAccountSheetOpen(true)}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left"
           >
-            <span className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-white/40">
+            <span className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               {accountLabel}
             </span>
             {selectedAccount ? (
@@ -160,31 +158,31 @@ export function LoanRepaymentSheet({ open, onClose, loan, outstanding, onRepaid 
                 >
                   <CategoryIcon name={selectedAccount.icon} size={16} color={selectedAccount.color} />
                 </span>
-                <span className="text-sm font-medium text-white">{selectedAccount.name}</span>
+                <span className="text-sm font-medium text-foreground">{selectedAccount.name}</span>
               </>
             ) : (
-              <span className="text-sm text-white/40">Select account</span>
+              <span className="text-sm text-muted-foreground">Select account</span>
             )}
-            <ChevronRight size={18} className="ml-auto text-white/30" />
+            <ChevronRight size={18} className="ml-auto text-muted-foreground" />
           </button>
           {errors.accountId && <p className="-mt-3 px-1 text-sm text-red-400">{errors.accountId.message}</p>}
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Date</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Date</label>
             <input
               type="date"
               {...register('date')}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/60"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-emerald-400/60"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Notes (optional)</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Notes (optional)</label>
             <textarea
               rows={2}
               placeholder="Anything else worth remembering"
               {...register('notes')}
-              className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-emerald-400/60"
+              className="w-full resize-none rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-emerald-400/60"
             />
           </div>
 

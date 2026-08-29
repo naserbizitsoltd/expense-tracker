@@ -26,8 +26,6 @@ interface DpsContributionSheetProps {
   onContributed: (contribution: DpsContribution, account: Account) => void
 }
 
-// Wrapped in singleFlight once, at module scope — same pattern as
-// CreditCardPaymentSheet's submitPayment / LoanRepaymentSheet's submitRepayment.
 const submitContribution = singleFlight(contributeToDps)
 
 export function DpsContributionSheet({ open, onClose, dps, linkedAccount, onContributed }: DpsContributionSheetProps) {
@@ -54,8 +52,6 @@ export function DpsContributionSheet({ open, onClose, dps, linkedAccount, onCont
 
   const amountInput = watch('amountInput')
 
-  // Pre-fill amount with the monthly installment, and account with the
-  // DPS's linked account, each time the sheet opens — still editable.
   useEffect(() => {
     if (!open) return
     reset({
@@ -117,14 +113,14 @@ export function DpsContributionSheet({ open, onClose, dps, linkedAccount, onCont
     <>
       <BottomSheet open={open} onClose={resetAndClose} title="Add Contribution">
         <form onSubmit={onValidated} className="flex max-h-[70vh] flex-col gap-5 overflow-y-auto pb-1 pr-0.5">
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5">
-            <p className="text-sm font-medium text-white">{dps.name}</p>
-            <p className="mt-1 text-xs text-white/40">Installment</p>
-            <p className="text-lg font-semibold tabular-nums text-white">{formatAmount(dps.monthlyInstallment, dps.currency)}</p>
+          <div className="rounded-2xl border border-border bg-surface px-4 py-3.5">
+            <p className="text-sm font-medium text-foreground">{dps.name}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Installment</p>
+            <p className="text-lg font-semibold tabular-nums text-foreground">{formatAmount(dps.monthlyInstallment, dps.currency)}</p>
           </div>
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Amount</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Amount</label>
             <AmountInput
               value={amountInput}
               onChange={(v) => setValue('amountInput', v, { shouldValidate: true })}
@@ -136,9 +132,9 @@ export function DpsContributionSheet({ open, onClose, dps, linkedAccount, onCont
           <button
             type="button"
             onClick={() => setAccountSheetOpen(true)}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left"
           >
-            <span className="w-16 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-white/40">
+            <span className="w-16 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Pay from
             </span>
             {selectedAccount ? (
@@ -149,31 +145,31 @@ export function DpsContributionSheet({ open, onClose, dps, linkedAccount, onCont
                 >
                   <CategoryIcon name={selectedAccount.icon} size={16} color={selectedAccount.color} />
                 </span>
-                <span className="text-sm font-medium text-white">{selectedAccount.name}</span>
+                <span className="text-sm font-medium text-foreground">{selectedAccount.name}</span>
               </>
             ) : (
-              <span className="text-sm text-white/40">Select account</span>
+              <span className="text-sm text-muted-foreground">Select account</span>
             )}
-            <ChevronRight size={18} className="ml-auto text-white/30" />
+            <ChevronRight size={18} className="ml-auto text-muted-foreground" />
           </button>
           {errors.accountId && <p className="-mt-3 px-1 text-sm text-red-400">{errors.accountId.message}</p>}
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Date</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Date</label>
             <input
               type="date"
               {...register('date')}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/60"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-emerald-400/60"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Notes (optional)</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Notes (optional)</label>
             <textarea
               rows={2}
               placeholder="Anything else worth remembering"
               {...register('notes')}
-              className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-emerald-400/60"
+              className="w-full resize-none rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-emerald-400/60"
             />
           </div>
 

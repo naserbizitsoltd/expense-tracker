@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ChevronRight } from 'lucide-react'
@@ -9,7 +9,7 @@ import { ConfirmationDialog } from '@/components/ui'
 import { CategoryIcon } from '@/lib/lucideIcon'
 import { formatAmount, parseAmountInput } from '@/lib/money'
 import { singleFlight } from '@/lib/singleFlight'
-import { payCreditCardBill } from '@/services/transactionService'
+import { payCreditCardBill, updateTransaction } from '@/services/transactionService'
 import { getUserMessage } from '@/db'
 import {
   creditCardPaymentFormSchema,
@@ -17,19 +17,22 @@ import {
   type CreditCardPaymentFormValues,
 } from '../creditCardPaymentSchema'
 import type { Account, CreditCard, Transaction } from '@/types/entities'
+import type { TransactionListItem } from '@/features/transactions/useTransactions'
 
 interface CreditCardPaymentSheetProps {
   open: boolean
   onClose: () => void
   card: CreditCard
+  editing?: TransactionListItem | null
   onPaid: (transaction: Transaction, account: Account) => void
 }
 
 // Wrapped in singleFlight once, at module scope, so a rapid double-tap
 // on Confirm Payment collapses into a single payCreditCardBill call.
 const submitPayment = singleFlight(payCreditCardBill)
+const submitPaymentEdit = singleFlight(updateTransaction)
 
-export function CreditCardPaymentSheet({ open, onClose, card, onPaid }: CreditCardPaymentSheetProps) {
+export function CreditCardPaymentSheet({ open, onClose, card, editing, onPaid }: CreditCardPaymentSheetProps) {
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -38,6 +41,8 @@ export function CreditCardPaymentSheet({ open, onClose, card, onPaid }: CreditCa
   const [pendingAmount, setPendingAmount] = useState<number | null>(null)
   const [pendingDate, setPendingDate] = useState<number | null>(null)
   const [pendingNote, setPendingNote] = useState('')
+
+  const isEditing = !!editing
 
   const {
     register,
@@ -52,6 +57,25 @@ export function CreditCardPaymentSheet({ open, onClose, card, onPaid }: CreditCa
   })
 
   const amountInput = watch('amountInput')
+
+  useEffect(() => {
+    if (!open) return
+    if (editing) {
+      const tx = editing.transaction
+      const d = new Date(tx.date)
+      reset({
+        amountInput: (tx.amount / 100).toFixed(2),
+        accountId: tx.accountId,
+        date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+        time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
+        notes: tx.note ?? '',
+      })
+      setSelectedAccount(editing.account ?? null)
+    } else {
+      reset(creditCardPaymentFormDefaults())
+      setSelectedAccount(null)
+    }
+  }, [open, editing])
 
   function resetAndClose() {
     reset(creditCardPaymentFormDefaults())
@@ -95,13 +119,20 @@ export function CreditCardPaymentSheet({ open, onClose, card, onPaid }: CreditCa
     setIsSubmitting(true)
     setSubmitError(null)
     try {
-      const transaction = await submitPayment({
-        amount: pendingAmount,
-        accountId: selectedAccount.id,
-        creditCardId: card.id,
-        date: pendingDate,
-        note: pendingNote,
-      })
+      const transaction = editing
+        ? await submitPaymentEdit(editing.transaction.id, {
+            amount: pendingAmount,
+            accountId: selectedAccount.id,
+            date: pendingDate,
+            note: pendingNote,
+          })
+        : await submitPayment({
+            amount: pendingAmount,
+            accountId: selectedAccount.id,
+            creditCardId: card.id,
+            date: pendingDate,
+            note: pendingNote,
+          })
       onPaid(transaction, selectedAccount)
       resetAndClose()
     } catch (error) {
@@ -113,22 +144,22 @@ export function CreditCardPaymentSheet({ open, onClose, card, onPaid }: CreditCa
 
   return (
     <>
-      <BottomSheet open={open} onClose={resetAndClose} title="Pay Card">
+      <BottomSheet open={open} onClose={resetAndClose} title={isEditing ? 'Edit Payment' : 'Pay Card'}>
         <form onSubmit={onValidated} className="flex max-h-[70vh] flex-col gap-5 overflow-y-auto pb-1 pr-0.5">
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5">
-            <p className="text-sm font-medium text-white">
+          <div className="rounded-2xl border border-border bg-surface-elevated px-4 py-3.5">
+            <p className="text-sm font-medium text-foreground">
               {card.name}
               {card.last4 ? ` •••• ${card.last4}` : ''}
             </p>
-            <p className="mt-1 text-xs text-white/40">Outstanding balance</p>
-            <p className="text-lg font-semibold tabular-nums text-white">
+            <p className="mt-1 text-xs text-muted-foreground">Outstanding balance</p>
+            <p className="text-lg font-semibold tabular-nums text-foreground">
               {formatAmount(card.outstandingBalance, card.currency)}
             </p>
           </div>
 
           <div>
             <div className="mb-1.5 flex items-center justify-between px-1">
-              <label className="text-xs font-medium text-white/50">Payment amount</label>
+              <label className="text-xs font-medium text-muted-foreground">Payment amount</label>
               <button type="button" onClick={payFullAmount} className="text-xs font-semibold text-emerald-400">
                 Pay Full Amount
               </button>
@@ -144,9 +175,9 @@ export function CreditCardPaymentSheet({ open, onClose, card, onPaid }: CreditCa
           <button
             type="button"
             onClick={() => setAccountSheetOpen(true)}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated px-4 py-3.5 text-left"
           >
-            <span className="w-16 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-white/40">
+            <span className="w-16 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Pay from
             </span>
             {selectedAccount ? (
@@ -157,41 +188,41 @@ export function CreditCardPaymentSheet({ open, onClose, card, onPaid }: CreditCa
                 >
                   <CategoryIcon name={selectedAccount.icon} size={16} color={selectedAccount.color} />
                 </span>
-                <span className="text-sm font-medium text-white">{selectedAccount.name}</span>
+                <span className="text-sm font-medium text-foreground">{selectedAccount.name}</span>
               </>
             ) : (
-              <span className="text-sm text-white/40">Select account</span>
+              <span className="text-sm text-muted-foreground">Select account</span>
             )}
-            <ChevronRight size={18} className="ml-auto text-white/30" />
+            <ChevronRight size={18} className="ml-auto text-muted-foreground" />
           </button>
           {errors.accountId && <p className="-mt-3 px-1 text-sm text-red-400">{errors.accountId.message}</p>}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Date</label>
+              <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Date</label>
               <input
                 type="date"
                 {...register('date')}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/60"
+                className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary/60"
               />
             </div>
             <div>
-              <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Time (optional)</label>
+              <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Time (optional)</label>
               <input
                 type="time"
                 {...register('time')}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/60"
+                className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary/60"
               />
             </div>
           </div>
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Notes (optional)</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Notes (optional)</label>
             <textarea
               rows={2}
               placeholder="Anything else worth remembering"
               {...register('notes')}
-              className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-emerald-400/60"
+              className="w-full resize-none rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/60"
             />
           </div>
 
@@ -205,7 +236,7 @@ export function CreditCardPaymentSheet({ open, onClose, card, onPaid }: CreditCa
                 isSubmitting || !selectedAccount ? 'opacity-50' : ''
               }`}
             >
-              {isSubmitting ? 'Paying…' : 'Confirm Payment'}
+              {isSubmitting ? 'Paying…' : isEditing ? 'Save Changes' : 'Confirm Payment'}
             </button>
           </div>
         </form>

@@ -18,8 +18,6 @@ interface FdrPayoutSheetProps {
   onReceived: (payout: FdrPayout, account: Account) => void
 }
 
-// Wrapped in singleFlight once, at module scope — same pattern as
-// DpsPayoutSheet's submitPayout.
 const submitPayout = singleFlight(receiveFdrMaturity)
 
 export function FdrPayoutSheet({ open, onClose, fdr, onReceived }: FdrPayoutSheetProps) {
@@ -90,33 +88,33 @@ export function FdrPayoutSheet({ open, onClose, fdr, onReceived }: FdrPayoutShee
     <>
       <BottomSheet open={open} onClose={resetAndClose} title="Receive Maturity">
         <div className="flex max-h-[70vh] flex-col gap-5 overflow-y-auto pb-1 pr-0.5">
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5">
-            <p className="text-sm font-medium text-white">{fdr.name}</p>
-            <p className="mt-1 text-xs text-white/40">Principal</p>
-            <p className="text-lg font-semibold tabular-nums text-white">{formatAmount(fdr.principal, fdr.currency)}</p>
+          <div className="rounded-2xl border border-border bg-surface px-4 py-3.5">
+            <p className="text-sm font-medium text-foreground">{fdr.name}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Principal</p>
+            <p className="text-lg font-semibold tabular-nums text-foreground">{formatAmount(fdr.principal, fdr.currency)}</p>
           </div>
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Profit / Interest</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Profit / Interest</label>
             <AmountInput value={profitInput} onChange={setProfitInput} currency={fdr.currency} />
-            <p className="mt-1.5 px-1 text-xs text-white/40">
+            <p className="mt-1.5 px-1 text-xs text-muted-foreground">
               {summary.profitAmount !== null
                 ? 'Pre-filled from the maturity amount you entered — still editable.'
                 : 'Enter what was actually paid — nothing is calculated automatically.'}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5">
-            <p className="text-xs text-white/40">Maturity Amount</p>
-            <p className="text-lg font-semibold tabular-nums text-white">{formatAmount(maturityAmount, fdr.currency)}</p>
+          <div className="rounded-2xl border border-border bg-surface px-4 py-3.5">
+            <p className="text-xs text-muted-foreground">Maturity Amount</p>
+            <p className="text-lg font-semibold tabular-nums text-foreground">{formatAmount(maturityAmount, fdr.currency)}</p>
           </div>
 
           <button
             type="button"
             onClick={() => setAccountSheetOpen(true)}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left"
           >
-            <span className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-white/40">
+            <span className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Receive into
             </span>
             {selectedAccount ? (
@@ -127,12 +125,12 @@ export function FdrPayoutSheet({ open, onClose, fdr, onReceived }: FdrPayoutShee
                 >
                   <CategoryIcon name={selectedAccount.icon} size={16} color={selectedAccount.color} />
                 </span>
-                <span className="text-sm font-medium text-white">{selectedAccount.name}</span>
+                <span className="text-sm font-medium text-foreground">{selectedAccount.name}</span>
               </>
             ) : (
-              <span className="text-sm text-white/40">Select account</span>
+              <span className="text-sm text-muted-foreground">Select account</span>
             )}
-            <ChevronRight size={18} className="ml-auto text-white/30" />
+            <ChevronRight size={18} className="ml-auto text-muted-foreground" />
           </button>
           {accountError && <p className="-mt-3 px-1 text-sm text-red-400">{accountError}</p>}
 

@@ -31,71 +31,71 @@ export function GoalHistorySheet({ goal, onClose }: { goal: Goal | null; onClose
   return (
     <BottomSheet open={!!goal} onClose={onClose} title={goal.name}>
       <div className="flex flex-col gap-5 pb-2">
-        <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-4">
+        <div className="rounded-2xl border border-border bg-surface px-4 py-4">
           <div className="mb-2 flex items-end justify-between">
-            <p className="text-2xl font-semibold text-white">{formatAmount(goal.currentAmount, goal.currency)}</p>
-            <p className="text-xs text-white/40">of {formatAmount(goal.targetAmount, goal.currency)}</p>
+            <p className="text-2xl font-semibold text-foreground">{formatAmount(goal.currentAmount, goal.currency)}</p>
+            <p className="text-xs text-muted-foreground">of {formatAmount(goal.targetAmount, goal.currency)}</p>
           </div>
-          <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
+          <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-border">
             <div
               className={cn('h-full rounded-full transition-all duration-300', isOverfunded ? 'bg-emerald-400' : 'bg-emerald-400/70')}
               style={{ width: `${percentComplete}%` }}
             />
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className={isOverfunded ? 'font-medium text-emerald-300' : 'text-white/50'}>
+            <span className={isOverfunded ? 'font-medium text-emerald-300' : 'text-muted-foreground'}>
               {isOverfunded
                 ? `${formatAmount(excess, goal.currency)} over target`
                 : `${formatAmount(remaining, goal.currency)} remaining`}
             </span>
-            <span className="text-white/40">{percentComplete}% complete</span>
+            <span className="text-muted-foreground">{percentComplete}% complete</span>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-wide text-white/30">Target date</p>
-            <p className="text-white">{goal.targetDate ? format(goal.targetDate, 'd MMM yyyy') : 'No target date'}</p>
+          <div className="rounded-xl border border-border bg-surface px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Target date</p>
+            <p className="text-foreground">{goal.targetDate ? format(goal.targetDate, 'd MMM yyyy') : 'No target date'}</p>
           </div>
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-wide text-white/30">Status</p>
-            <p className={cn(isOverdue ? 'text-rose-300' : 'text-white')}>{statusLabel}</p>
+          <div className="rounded-xl border border-border bg-surface px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Status</p>
+            <p className={cn(isOverdue ? 'text-rose-300' : 'text-foreground')}>{statusLabel}</p>
           </div>
         </div>
 
         {goal.notes && (
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5">
-            <p className="mb-1 text-[10px] uppercase tracking-wide text-white/30">Notes</p>
-            <p className="text-sm text-white/70">{goal.notes}</p>
+          <div className="rounded-xl border border-border bg-surface px-3 py-2.5">
+            <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Notes</p>
+            <p className="text-sm text-muted-foreground">{goal.notes}</p>
           </div>
         )}
 
         <div>
-          <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-white/40">
+          <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Contributions ({contributions.length}) · Withdrawals ({withdrawals.length})
           </p>
           <div className="flex flex-col gap-2">
-            {isLoading && <p className="py-8 text-center text-sm text-white/40">Loading…</p>}
+            {isLoading && <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>}
             {!isLoading && entries.length === 0 && (
-              <p className="py-8 text-center text-sm text-white/40">No activity yet for this goal.</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">No activity yet for this goal.</p>
             )}
-        {entries.map((entry) => {
-          const isContribution = entry.type === 'contribution'
-          const account = accountsById.get(entry.accountId)
-          return (
-            <div key={entry.id} className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3">
-              <div className="min-w-0">
-                <p className={cn('text-sm font-semibold', isContribution ? 'text-emerald-400' : 'text-rose-300/90')}>
-                  {isContribution ? '+' : '−'} {formatAmount(entry.amount, goal.currency)}
-                </p>
-                <p className="truncate text-xs text-white/40">
-                  {isContribution ? 'From' : 'To'} {account?.name ?? 'Unknown account'} · {format(entry.date, 'MMM d, yyyy')}
-                </p>
-                                {entry.note && <p className="truncate text-xs text-white/30">{entry.note}</p>}
-              </div>
-            </div>
-          )
-        })}
+            {entries.map((entry) => {
+              const isContribution = entry.type === 'contribution'
+              const account = accountsById.get(entry.accountId)
+              return (
+                <div key={entry.id} className="flex items-center justify-between rounded-2xl border border-border bg-surface px-4 py-3">
+                  <div className="min-w-0">
+                    <p className={cn('text-sm font-semibold', isContribution ? 'text-emerald-400' : 'text-rose-300/90')}>
+                      {isContribution ? '+' : '−'} {formatAmount(entry.amount, goal.currency)}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {isContribution ? 'From' : 'To'} {account?.name ?? 'Unknown account'} · {format(entry.date, 'MMM d, yyyy')}
+                    </p>
+                    {entry.note && <p className="truncate text-xs text-muted-foreground">{entry.note}</p>}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>

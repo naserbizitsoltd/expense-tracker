@@ -59,13 +59,10 @@ export function RecurringFormSheet({ open, onClose, rule, defaultType = 'expense
   const amountInput = watch('amountInput')
   const frequency = watch('frequency')
 
-  // Preload the form (and resolve the account/category records for
-  // display) whenever a rule is opened for editing, or reset to blank
-  // defaults when opening for a new rule.
   useEffect(() => {
     if (!open) return
     if (rule) {
-            reset({
+      reset({
         templateType: rule.templateType as 'expense' | 'income',
         amountInput: String(toDecimal({ amount: rule.amount, currency: rule.currency })),
         categoryId: rule.categoryId ?? '',
@@ -101,7 +98,7 @@ export function RecurringFormSheet({ open, onClose, rule, defaultType = 'expense
         setSubmitError('Enter a valid amount.')
         return
       }
-            const [year, month, day] = values.startDate.split('-').map(Number)
+      const [year, month, day] = values.startDate.split('-').map(Number)
       const startDate = new Date(year, (month ?? 1) - 1, day ?? 1, 12, 0).getTime()
       const endDate = values.endDate
         ? (() => {
@@ -162,7 +159,7 @@ export function RecurringFormSheet({ open, onClose, rule, defaultType = 'expense
       <BottomSheet open={open} onClose={resetAndClose} title={isEdit ? 'Edit Recurring' : 'Add Recurring'}>
         <form onSubmit={onSubmit} className="flex max-h-[70vh] flex-col gap-5 overflow-y-auto pb-1 pr-0.5">
           {!isEdit && (
-            <div className="flex rounded-xl border border-white/10 bg-white/5 p-1">
+            <div className="flex rounded-xl border border-border bg-surface p-1">
               {(['expense', 'income'] as const).map((t) => (
                 <button
                   key={t}
@@ -174,7 +171,7 @@ export function RecurringFormSheet({ open, onClose, rule, defaultType = 'expense
                   }}
                   className={cn(
                     'flex-1 rounded-lg py-2 text-sm font-semibold capitalize transition-all duration-150',
-                    templateType === t ? 'bg-emerald-400 text-black' : 'text-white/50'
+                    templateType === t ? 'bg-emerald-400 text-black' : 'text-muted-foreground'
                   )}
                 >
                   {t}
@@ -193,7 +190,7 @@ export function RecurringFormSheet({ open, onClose, rule, defaultType = 'expense
           <button
             type="button"
             onClick={() => setCategorySheetOpen(true)}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left"
           >
             {selectedCategory ? (
               <>
@@ -203,19 +200,19 @@ export function RecurringFormSheet({ open, onClose, rule, defaultType = 'expense
                 >
                   <CategoryIcon name={selectedCategory.icon} size={16} color={selectedCategory.color} />
                 </span>
-                <span className="text-sm font-medium text-white">{selectedCategory.name}</span>
+                <span className="text-sm font-medium text-foreground">{selectedCategory.name}</span>
               </>
             ) : (
-              <span className="text-sm text-white/40">Select category</span>
+              <span className="text-sm text-muted-foreground">Select category</span>
             )}
-            <ChevronRight size={18} className="ml-auto text-white/30" />
+            <ChevronRight size={18} className="ml-auto text-muted-foreground" />
           </button>
           {errors.categoryId && <p className="-mt-3 px-1 text-sm text-red-400">{errors.categoryId.message}</p>}
 
           <button
             type="button"
             onClick={() => setAccountSheetOpen(true)}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left"
           >
             {selectedAccount ? (
               <>
@@ -225,17 +222,17 @@ export function RecurringFormSheet({ open, onClose, rule, defaultType = 'expense
                 >
                   <CategoryIcon name={selectedAccount.icon} size={16} color={selectedAccount.color} />
                 </span>
-                <span className="text-sm font-medium text-white">{selectedAccount.name}</span>
+                <span className="text-sm font-medium text-foreground">{selectedAccount.name}</span>
               </>
             ) : (
-              <span className="text-sm text-white/40">{templateType === 'expense' ? 'Paid from' : 'Received into'}</span>
+              <span className="text-sm text-muted-foreground">{templateType === 'expense' ? 'Paid from' : 'Received into'}</span>
             )}
-            <ChevronRight size={18} className="ml-auto text-white/30" />
+            <ChevronRight size={18} className="ml-auto text-muted-foreground" />
           </button>
           {errors.accountId && <p className="-mt-3 px-1 text-sm text-red-400">{errors.accountId.message}</p>}
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Frequency</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Frequency</label>
             <div className="grid grid-cols-4 gap-2">
               {recurringFrequencies.map((f) => (
                 <button
@@ -246,7 +243,7 @@ export function RecurringFormSheet({ open, onClose, rule, defaultType = 'expense
                     'rounded-xl border py-2 text-xs font-semibold transition-colors',
                     frequency === f
                       ? 'border-emerald-400 bg-emerald-400/15 text-emerald-300'
-                      : 'border-white/10 bg-white/5 text-white/50'
+                      : 'border-border bg-surface text-muted-foreground'
                   )}
                 >
                   {FREQUENCY_LABELS[f]}
@@ -255,44 +252,44 @@ export function RecurringFormSheet({ open, onClose, rule, defaultType = 'expense
             </div>
           </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Start date</label>
+              <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Start date</label>
               <input
                 type="date"
                 {...register('startDate')}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/60"
+                className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-emerald-400/60"
               />
               {errors.startDate && <p className="mt-1 px-1 text-sm text-red-400">{errors.startDate.message}</p>}
             </div>
             <div>
-              <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">End date (optional)</label>
+              <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">End date (optional)</label>
               <input
                 type="date"
                 {...register('endDate')}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/60"
+                className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-emerald-400/60"
               />
               {errors.endDate && <p className="mt-1 px-1 text-sm text-red-400">{errors.endDate.message}</p>}
             </div>
           </div>
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Description (optional)</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Description (optional)</label>
             <input
               type="text"
               placeholder="e.g. House Rent"
               {...register('description')}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-emerald-400/60"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-emerald-400/60"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Notes (optional)</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Notes (optional)</label>
             <textarea
               rows={2}
               placeholder="Anything else worth remembering"
               {...register('notes')}
-              className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-emerald-400/60"
+              className="w-full resize-none rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-emerald-400/60"
             />
           </div>
 

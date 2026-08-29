@@ -1,12 +1,30 @@
 import { format } from 'date-fns'
-import { ArrowLeftRight, CreditCard as CreditCardIcon, Trash2 } from 'lucide-react'
+import { ArrowLeftRight, CreditCard as CreditCardIcon, Pencil, Trash2 } from 'lucide-react'
 import { CategoryIcon } from '@/lib/lucideIcon'
 import { formatAmount } from '@/lib/money'
 import { cn } from '@/lib/cn'
 import type { TransactionListItem } from '../useTransactions'
 
 interface TransactionRowProps extends TransactionListItem {
+  onEdit?: () => void
   onDelete?: () => void
+}
+
+function EditAction({ onEdit }: { onEdit?: () => void }) {
+  if (!onEdit) return null
+  return (
+    <button
+      type="button"
+      aria-label="Edit transaction"
+      onClick={(e) => {
+        e.stopPropagation()
+        onEdit()
+      }}
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors active:scale-90 hover:bg-surface-elevated hover:text-foreground"
+    >
+      <Pencil size={16} />
+    </button>
+  )
 }
 
 function DeleteAction({ onDelete }: { onDelete?: () => void }) {
@@ -26,7 +44,7 @@ function DeleteAction({ onDelete }: { onDelete?: () => void }) {
   )
 }
 
-export function TransactionRow({ transaction, category, account, toAccount, creditCard, onDelete }: TransactionRowProps) {
+export function TransactionRow({ transaction, category, account, toAccount, creditCard, onEdit, onDelete }: TransactionRowProps) {
   // Credit Card bill payment — a liability payment, never an Expense.
   if (transaction.type === 'credit_card') {
     return (
@@ -45,6 +63,7 @@ export function TransactionRow({ transaction, category, account, toAccount, cred
         <span className="shrink-0 text-sm font-semibold text-foreground">
           {formatAmount(transaction.amount, transaction.currency)}
         </span>
+        <EditAction onEdit={onEdit} />
         <DeleteAction onDelete={onDelete} />
       </div>
     )
@@ -66,6 +85,7 @@ export function TransactionRow({ transaction, category, account, toAccount, cred
         <span className="shrink-0 text-sm font-semibold text-foreground">
           {formatAmount(transaction.amount, transaction.currency)}
         </span>
+        <EditAction onEdit={onEdit} />
         <DeleteAction onDelete={onDelete} />
       </div>
     )
@@ -102,6 +122,7 @@ export function TransactionRow({ transaction, category, account, toAccount, cred
         {isIncome ? '+' : ''}
         {formatAmount(signedAmount, transaction.currency)}
       </span>
+      <EditAction onEdit={onEdit} />
       <DeleteAction onDelete={onDelete} />
     </div>
   )

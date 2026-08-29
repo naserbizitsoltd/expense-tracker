@@ -9,14 +9,16 @@ import { TransferFormSheet } from '../components/TransferFormSheet'
 import { TransactionRow } from '../components/TransactionRow'
 import { EmptyTransactionsState } from '../components/EmptyTransactionsState'
 import { SuccessToast } from '../components/SuccessToast'
-import { useTransactionsList } from '../useTransactions'
+import { useTransactionsList, type TransactionListItem } from '../useTransactions'
 import { ConfirmationDialog, useToast } from '@/components/ui'
 import { deleteTransaction } from '@/services/transactionService'
+import { CreditCardPaymentSheet } from '@/features/credit-cards/components/CreditCardPaymentSheet'
 import type { Account, Category, Transaction } from '@/types/entities'
 
 type SavedFeedback =
-  | { kind: 'income' | 'expense'; transaction: Transaction; category: Category; account: Account | null }
-  | { kind: 'transfer'; transaction: Transaction; fromAccount: Account; toAccount: Account }
+  | { kind: 'income' | 'expense'; transaction: Transaction; category: Category; account: Account | null; mode: 'added' | 'updated' }
+  | { kind: 'transfer'; transaction: Transaction; fromAccount: Account; toAccount: Account; mode: 'added' | 'updated' }
+  | { kind: 'credit_card'; transaction: Transaction; account: Account; mode: 'added' | 'updated' }
 
 interface TransactionsPageProps {
   activeNav: string
@@ -31,8 +33,28 @@ export function TransactionsPage({ activeNav, onNavChange, onOpenMenu }: Transac
   const [expenseFormOpen, setExpenseFormOpen] = useState(false)
   const [incomeFormOpen, setIncomeFormOpen] = useState(false)
   const [transferFormOpen, setTransferFormOpen] = useState(false)
+  const [creditCardEditOpen, setCreditCardEditOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<TransactionListItem | null>(null)
   const [feedback, setFeedback] = useState<SavedFeedback | null>(null)
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null)
+
+  function handleEdit(item: TransactionListItem) {
+    setEditingItem(item)
+    switch (item.transaction.type) {
+      case 'expense':
+        setExpenseFormOpen(true)
+        break
+      case 'income':
+        setIncomeFormOpen(true)
+        break
+      case 'transfer':
+        setTransferFormOpen(true)
+        break
+      case 'credit_card':
+        if (item.creditCard) setCreditCardEditOpen(true)
+        break
+    }
+  }
 
   async function confirmDeleteTransaction() {
     if (!transactionToDelete) return
@@ -77,6 +99,7 @@ export function TransactionsPage({ activeNav, onNavChange, onOpenMenu }: Transac
             <TransactionRow
               key={item.transaction.id}
               {...item}
+              onEdit={() => handleEdit(item)}
               onDelete={() => setTransactionToDelete(item.transaction.id)}
             />
           ))}
@@ -138,29 +161,60 @@ export function TransactionsPage({ activeNav, onNavChange, onOpenMenu }: Transac
 
       <ExpenseFormSheet
         open={expenseFormOpen}
-        onClose={() => setExpenseFormOpen(false)}
+        editing={editingItem && editingItem.transaction.type === 'expense' ? editingItem : null}
+        onClose={() => {
+          setExpenseFormOpen(false)
+          setEditingItem(null)
+        }}
         onSaved={(transaction, category, account) =>
-          setFeedback({ kind: 'expense', transaction, category, account })
+          setFeedback({ kind: 'expense', transaction, category, account, mode: editingItem ? 'updated' : 'added' })
         }
       />
       <IncomeFormSheet
         open={incomeFormOpen}
-        onClose={() => setIncomeFormOpen(false)}
+        editing={editingItem && editingItem.transaction.type === 'income' ? editingItem : null}
+        onClose={() => {
+          setIncomeFormOpen(false)
+          setEditingItem(null)
+        }}
         onSaved={(transaction, category, account) =>
-          setFeedback({ kind: 'income', transaction, category, account })
+          setFeedback({ kind: 'income', transaction, category, account, mode: editingItem ? 'updated' : 'added' })
         }
       />
       <TransferFormSheet
         open={transferFormOpen}
-        onClose={() => setTransferFormOpen(false)}
+        editing={editingItem && editingItem.transaction.type === 'transfer' ? editingItem : null}
+        onClose={() => {
+          setTransferFormOpen(false)
+          setEditingItem(null)
+        }}
         onSaved={(transaction, fromAccount, toAccount) =>
-          setFeedback({ kind: 'transfer', transaction, fromAccount, toAccount })
+          setFeedback({ kind: 'transfer', transaction, fromAccount, toAccount, mode: editingItem ? 'updated' : 'added' })
         }
       />
 
-      {feedback && feedback.kind !== 'transfer' && (
+      {editingItem?.transaction.type === 'credit_card' && editingItem.creditCard && (
+        <CreditCardPaymentSheet
+          open={creditCardEditOpen}
+          card={editingItem.creditCard}
+          editing={editingItem}
+          onClose={() => {
+            setCreditCardEditOpen(false)
+            setEditingItem(null)
+          }}
+          onPaid={(transaction, account) =>
+            setFeedback({ kind: 'credit_card', transaction, account, mode: 'updated' })
+          }
+        />
+      )}
+
+      {feedback && (feedback.kind === 'income' || feedback.kind === 'expense') && (
         <SuccessToast
-          message={feedback.kind === 'income' ? 'Income added' : 'Expense added'}
+          message={
+            feedback.mode === 'updated'
+              ? feedback.kind === 'income' ? 'Income updated' : 'Expense updated'
+              : feedback.kind === 'income' ? 'Income added' : 'Expense added'
+          }
           amount={feedback.kind === 'income' ? feedback.transaction.amount : -feedback.transaction.amount}
           currency={feedback.transaction.currency}
           onDismiss={() => setFeedback(null)}
@@ -168,8 +222,17 @@ export function TransactionsPage({ activeNav, onNavChange, onOpenMenu }: Transac
       )}
       {feedback && feedback.kind === 'transfer' && (
         <SuccessToast
-          message="Transfer completed"
+          message={feedback.mode === 'updated' ? 'Transfer updated' : 'Transfer completed'}
           detail={`${feedback.fromAccount.name} → ${feedback.toAccount.name}`}
+          amount={feedback.transaction.amount}
+          currency={feedback.transaction.currency}
+          variant="neutral"
+          onDismiss={() => setFeedback(null)}
+        />
+      )}
+      {feedback && feedback.kind === 'credit_card' && (
+        <SuccessToast
+          message="Payment updated"
           amount={feedback.transaction.amount}
           currency={feedback.transaction.currency}
           variant="neutral"

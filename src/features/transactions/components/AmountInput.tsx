@@ -23,11 +23,11 @@ export const AmountInput = forwardRef<HTMLInputElement, AmountInputProps>(functi
     <div>
       <div
         className={cn(
-          'flex items-center gap-2 rounded-2xl border bg-white/5 px-5 py-4 transition-colors',
-          error ? 'border-red-500/60' : 'border-white/10 focus-within:border-emerald-400/60'
+          'flex items-center gap-2 rounded-2xl border bg-surface-elevated px-5 py-4 transition-colors',
+          error ? 'border-danger/60' : 'border-border focus-within:border-primary/60'
         )}
       >
-        <span className="text-2xl font-semibold text-white/40">{currencySymbol(currency)}</span>
+        <span className="text-2xl font-semibold text-muted-foreground">{currencySymbol(currency)}</span>
         <input
           ref={ref}
           name={name}
@@ -41,7 +41,7 @@ export const AmountInput = forwardRef<HTMLInputElement, AmountInputProps>(functi
             if (/^\d*\.?\d{0,2}$/.test(next)) onChange(next)
           }}
           onBlur={onBlur}
-          className="w-full bg-transparent text-3xl font-semibold tracking-tight text-white outline-none placeholder:text-white/25"
+          className="w-full bg-transparent text-3xl font-semibold tracking-tight text-foreground outline-none placeholder:text-muted-foreground/60"
         />
       </div>
       {error && <p className="mt-1.5 px-1 text-sm text-red-400">{error}</p>}

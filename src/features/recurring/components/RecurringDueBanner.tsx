@@ -10,10 +10,6 @@ import { generateDueOccurrence, skipDueOccurrence, processDueRecurringTransactio
 import { useRecurringDue } from '../useRecurringDue'
 import type { Account } from '@/types/entities'
 
-// Global, tab-independent surface for spec requirement: recurring
-// occurrences are NEVER generated silently. This banner + sheet is the
-// only place generation happens automatically-adjacent — every write
-// here is a direct user tap (Generate / Skip / Generate all due).
 export function RecurringDueBanner() {
   const { rows, isLoading } = useRecurringDue()
   const { showToast } = useToast()
@@ -118,17 +114,17 @@ export function RecurringDueBanner() {
               return (
                 <div
                   key={rule.id}
-                  className="flex flex-col gap-2 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5"
+                  className="flex flex-col gap-2 rounded-2xl border border-border bg-surface px-4 py-3.5"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/5">
-                      <Repeat size={16} className="text-white/50" />
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface">
+                      <Repeat size={16} className="text-muted-foreground" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-white">
+                      <p className="truncate text-sm font-medium text-foreground">
                         {rule.note || (isIncome ? 'Income' : 'Expense')}
                       </p>
-                      <p className="truncate text-xs text-white/40">
+                      <p className="truncate text-xs text-muted-foreground">
                         {accountName ?? 'Unknown account'} · Due {format(occurrenceDate, 'd MMM')}
                       </p>
                     </div>
@@ -156,7 +152,7 @@ export function RecurringDueBanner() {
                       <button
                         onClick={() => setChangingAccountFor(rule.id)}
                         disabled={busy}
-                        className="flex-1 rounded-xl bg-white/5 py-2 text-xs font-semibold text-white/70"
+                        className="flex-1 rounded-xl bg-surface py-2 text-xs font-semibold text-muted-foreground"
                       >
                         Change account
                       </button>
@@ -164,7 +160,7 @@ export function RecurringDueBanner() {
                     <button
                       onClick={() => handleSkip(rule.id)}
                       disabled={busy}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white/5 py-2 text-xs font-semibold text-white/60 disabled:opacity-40"
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-surface py-2 text-xs font-semibold text-muted-foreground disabled:opacity-40"
                     >
                       <XIcon size={14} /> Skip
                     </button>

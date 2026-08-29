@@ -40,7 +40,7 @@ export function GoalActionsSheet({ goal, onClose, onEdit, onAddMoney, onWithdraw
             <button
               type="button"
               onClick={onAddMoney}
-              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left text-sm font-medium text-white"
+              className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left text-sm font-medium text-foreground"
             >
               <PlusCircle size={18} className="text-emerald-400" /> Add Money
             </button>
@@ -48,43 +48,43 @@ export function GoalActionsSheet({ goal, onClose, onEdit, onAddMoney, onWithdraw
               type="button"
               onClick={onWithdraw}
               disabled={goal.currentAmount <= 0}
-              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left text-sm font-medium text-white disabled:opacity-40"
+              className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left text-sm font-medium text-foreground disabled:opacity-40"
             >
-              <MinusCircle size={18} className="text-white/60" /> Withdraw
+              <MinusCircle size={18} className="text-muted-foreground" /> Withdraw
             </button>
           </>
         )}
-                <button
+        <button
           type="button"
           onClick={onViewHistory}
-          className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left text-sm font-medium text-white"
+          className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left text-sm font-medium text-foreground"
         >
-          <History size={18} className="text-white/60" /> View Details
+          <History size={18} className="text-muted-foreground" /> View Details
         </button>
         <button
           type="button"
           onClick={onEdit}
-          className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left text-sm font-medium text-white"
+          className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left text-sm font-medium text-foreground"
         >
-          <Pencil size={18} className="text-white/60" /> Edit
+          <Pencil size={18} className="text-muted-foreground" /> Edit
         </button>
         <button
           type="button"
           onClick={toggleArchive}
-          className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left text-sm font-medium text-white"
+          className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left text-sm font-medium text-foreground"
         >
           {isArchived ? (
             <>
-              <ArchiveRestore size={18} className="text-white/60" /> Restore
+              <ArchiveRestore size={18} className="text-muted-foreground" /> Restore
             </>
           ) : (
             <>
-              <Archive size={18} className="text-white/60" /> Archive
+              <Archive size={18} className="text-muted-foreground" /> Archive
             </>
           )}
         </button>
         {!isArchived && (
-          <p className="px-1 text-center text-xs text-white/40">
+          <p className="px-1 text-center text-xs text-muted-foreground">
             Archiving keeps this goal's saved amount and history — it just leaves the active list.
           </p>
         )}

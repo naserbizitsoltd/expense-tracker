@@ -28,9 +28,6 @@ export function RecurringActionsSheet({ rule, onClose, onEdit }: RecurringAction
 
   async function remove() {
     try {
-      // Deletes only the recurring rule — transactions already
-      // generated from it are untouched (they live independently in
-      // the transactions table).
       await recurringTransactionRepository.delete(rule!.id)
       onClose()
     } catch (e) {
@@ -48,22 +45,22 @@ export function RecurringActionsSheet({ rule, onClose, onEdit }: RecurringAction
             <button
               type="button"
               onClick={onEdit}
-              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left text-sm font-medium text-white"
+              className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left text-sm font-medium text-foreground"
             >
-              <Pencil size={18} className="text-white/60" /> Edit
+              <Pencil size={18} className="text-muted-foreground" /> Edit
             </button>
             <button
               type="button"
               onClick={toggleActive}
-              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left text-sm font-medium text-white"
+              className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left text-sm font-medium text-foreground"
             >
               {rule.isActive ? (
                 <>
-                  <Pause size={18} className="text-white/60" /> Pause
+                  <Pause size={18} className="text-muted-foreground" /> Pause
                 </>
               ) : (
                 <>
-                  <Play size={18} className="text-white/60" /> Resume
+                  <Play size={18} className="text-muted-foreground" /> Resume
                 </>
               )}
             </button>
@@ -77,14 +74,14 @@ export function RecurringActionsSheet({ rule, onClose, onEdit }: RecurringAction
           </>
         ) : (
           <div className="flex flex-col gap-3">
-            <p className="px-1 text-sm text-white/60">
+            <p className="px-1 text-sm text-muted-foreground">
               Delete this recurring rule? Transactions already created from it will stay in your history.
             </p>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(false)}
-                className={cn('flex-1 rounded-2xl border border-white/10 bg-white/5 py-3 text-sm font-semibold text-white')}
+                className={cn('flex-1 rounded-2xl border border-border bg-surface py-3 text-sm font-semibold text-foreground')}
               >
                 Cancel
               </button>

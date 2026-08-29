@@ -24,10 +24,10 @@ export function AccountSelectSheet({
 
   return (
     <BottomSheet open={open} onClose={onClose} title={title}>
-      {isLoading && <p className="py-8 text-center text-sm text-white/40">Loading accounts…</p>}
+      {isLoading && <p className="py-8 text-center text-sm text-muted-foreground">Loading accounts…</p>}
 
       {!isLoading && accounts.length === 0 && (
-        <p className="py-8 text-center text-sm text-white/40">
+        <p className="py-8 text-center text-sm text-muted-foreground">
           {excludeAccountId
             ? 'No other active accounts available. Add one from Accounts first.'
             : 'No active accounts yet. Add one from Accounts first.'}
@@ -42,7 +42,7 @@ export function AccountSelectSheet({
               onSelect(account)
               onClose()
             }}
-            className="flex items-center gap-3 rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-left active:scale-[0.98] transition-transform"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated px-4 py-3 text-left active:scale-[0.98] transition-transform"
           >
             <span
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
@@ -51,12 +51,12 @@ export function AccountSelectSheet({
               <CategoryIcon name={account.icon} size={18} color={account.color} />
             </span>
             <span className="flex-1 min-w-0">
-              <span className="block truncate text-sm font-medium text-white">{account.name}</span>
+              <span className="block truncate text-sm font-medium text-foreground">{account.name}</span>
               {account.provider && (
-                <span className="block truncate text-xs text-white/40">{account.provider}</span>
+                <span className="block truncate text-xs text-muted-foreground">{account.provider}</span>
               )}
             </span>
-            <span className="shrink-0 text-sm font-semibold text-white/80">
+            <span className="shrink-0 text-sm font-semibold text-foreground/80">
               {formatAmount(account.balance, account.currency)}
             </span>
           </button>

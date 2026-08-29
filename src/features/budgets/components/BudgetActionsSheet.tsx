@@ -48,29 +48,29 @@ export function BudgetActionsSheet({ budget, onClose, onEdit, onViewDetails }: B
             <button
               type="button"
               onClick={onViewDetails}
-              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left text-sm font-medium text-white"
+              className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated px-4 py-3.5 text-left text-sm font-medium text-foreground"
             >
-              <Eye size={18} className="text-white/60" /> View details
+              <Eye size={18} className="text-muted-foreground" /> View details
             </button>
             <button
               type="button"
               onClick={onEdit}
-              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left text-sm font-medium text-white"
+              className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated px-4 py-3.5 text-left text-sm font-medium text-foreground"
             >
-              <Pencil size={18} className="text-white/60" /> Edit
+              <Pencil size={18} className="text-muted-foreground" /> Edit
             </button>
             <button
               type="button"
               onClick={toggleActive}
-              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left text-sm font-medium text-white"
+              className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated px-4 py-3.5 text-left text-sm font-medium text-foreground"
             >
               {budget.isActive ? (
                 <>
-                  <Pause size={18} className="text-white/60" /> Pause
+                  <Pause size={18} className="text-muted-foreground" /> Pause
                 </>
               ) : (
                 <>
-                  <Play size={18} className="text-white/60" /> Resume
+                  <Play size={18} className="text-muted-foreground" /> Resume
                 </>
               )}
             </button>
@@ -84,12 +84,12 @@ export function BudgetActionsSheet({ budget, onClose, onEdit, onViewDetails }: B
           </>
         ) : (
           <div className="flex flex-col gap-3">
-            <p className="px-1 text-sm text-white/60">Delete this budget? Your expense transactions are not affected.</p>
+            <p className="px-1 text-sm text-muted-foreground">Delete this budget? Your expense transactions are not affected.</p>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(false)}
-                className={cn('flex-1 rounded-2xl border border-white/10 bg-white/5 py-3 text-sm font-semibold text-white')}
+                className={cn('flex-1 rounded-2xl border border-border bg-surface-elevated py-3 text-sm font-semibold text-foreground')}
               >
                 Cancel
               </button>

@@ -66,7 +66,7 @@ export function GoalMoneyFormSheet({ open, onClose, goal, mode, onSaved }: GoalM
           <AmountInput value={amountInput} onChange={setAmountInput} currency={selectedAccount?.currency ?? goal.currency} />
 
           {isWithdrawal && (
-            <p className="-mt-3 px-1 text-xs text-white/40">
+            <p className="-mt-3 px-1 text-xs text-muted-foreground">
               Available to withdraw: {formatAmount(goal.currentAmount, goal.currency)}
             </p>
           )}
@@ -74,29 +74,29 @@ export function GoalMoneyFormSheet({ open, onClose, goal, mode, onSaved }: GoalM
           <button
             type="button"
             onClick={() => setAccountSheetOpen(true)}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left"
           >
             {selectedAccount ? (
               <>
                 <span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: `${selectedAccount.color}26` }}>
                   <CategoryIcon name={selectedAccount.icon} size={16} color={selectedAccount.color} />
                 </span>
-                <span className="text-sm font-medium text-white">{selectedAccount.name}</span>
+                <span className="text-sm font-medium text-foreground">{selectedAccount.name}</span>
               </>
             ) : (
-              <span className="text-sm text-white/40">{isWithdrawal ? 'Withdraw to account' : 'From account'}</span>
+              <span className="text-sm text-muted-foreground">{isWithdrawal ? 'Withdraw to account' : 'From account'}</span>
             )}
-            <ChevronRight size={18} className="ml-auto text-white/30" />
+            <ChevronRight size={18} className="ml-auto text-muted-foreground" />
           </button>
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Note (optional)</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Note (optional)</label>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="What's this for"
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-emerald-400/60"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-emerald-400/60"
             />
           </div>
 

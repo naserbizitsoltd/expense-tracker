@@ -126,24 +126,24 @@ export function GoalFormSheet({ open, onClose, goal, onSaved }: GoalFormSheetPro
           <button
             type="button"
             onClick={() => setIconPickerOpen(true)}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left"
           >
             <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ backgroundColor: `${color}26` }}>
               <CategoryIcon name={icon} size={20} color={color} />
             </span>
             <div>
-              <p className="text-sm font-medium text-white">Icon</p>
-              <p className="text-xs text-white/40">Tap to change</p>
+              <p className="text-sm font-medium text-foreground">Icon</p>
+              <p className="text-xs text-muted-foreground">Tap to change</p>
             </div>
           </button>
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Goal name</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Goal name</label>
             <input
               type="text"
               placeholder="e.g. Emergency Fund"
               {...register('name')}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-emerald-400/60"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-emerald-400/60"
             />
             {errors.name && <p className="mt-1 px-1 text-sm text-red-400">{errors.name.message}</p>}
           </div>
@@ -156,16 +156,16 @@ export function GoalFormSheet({ open, onClose, goal, onSaved }: GoalFormSheetPro
           />
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Target date (optional)</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Target date (optional)</label>
             <input
               type="date"
               {...register('targetDate')}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/60"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-emerald-400/60"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <p className="text-sm font-medium text-white">Color</p>
+            <p className="text-sm font-medium text-foreground">Color</p>
             <div className="flex flex-wrap gap-2">
               {CATEGORY_COLORS.map((c) => (
                 <button
@@ -175,7 +175,7 @@ export function GoalFormSheet({ open, onClose, goal, onSaved }: GoalFormSheetPro
                   aria-label={`Use color ${c}`}
                   className={cn(
                     'h-8 w-8 rounded-full border-2 transition-transform active:scale-90',
-                    color === c ? 'border-white' : 'border-transparent'
+                    color === c ? 'border-foreground' : 'border-transparent'
                   )}
                   style={{ backgroundColor: c }}
                 />
@@ -184,12 +184,12 @@ export function GoalFormSheet({ open, onClose, goal, onSaved }: GoalFormSheetPro
           </div>
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Notes (optional)</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Notes (optional)</label>
             <textarea
               rows={2}
               placeholder="What this goal is for"
               {...register('notes')}
-              className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-emerald-400/60"
+              className="w-full resize-none rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-emerald-400/60"
             />
           </div>
 

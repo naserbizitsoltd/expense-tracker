@@ -22,10 +22,10 @@ export function CategorySelectSheet({
 
   return (
     <BottomSheet open={open} onClose={onClose} title={title}>
-      {isLoading && <p className="py-8 text-center text-sm text-white/40">Loading categories…</p>}
+      {isLoading && <p className="py-8 text-center text-sm text-muted-foreground">Loading categories…</p>}
 
       {!isLoading && categories.length === 0 && (
-        <p className="py-8 text-center text-sm text-white/40">
+        <p className="py-8 text-center text-sm text-muted-foreground">
           No {type} categories yet. Add one from Categories first.
         </p>
       )}
@@ -38,7 +38,7 @@ export function CategorySelectSheet({
               onSelect(category)
               onClose()
             }}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-white/5 bg-white/5 px-3 py-4 text-center active:scale-95 transition-transform"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-surface-elevated px-3 py-4 text-center active:scale-95 transition-transform"
           >
             <span
               className="flex h-11 w-11 items-center justify-center rounded-full"
@@ -46,7 +46,7 @@ export function CategorySelectSheet({
             >
               <CategoryIcon name={category.icon} size={20} color={category.color} />
             </span>
-            <span className="line-clamp-1 text-xs font-medium text-white/85">{category.name}</span>
+            <span className="line-clamp-1 text-xs font-medium text-foreground">{category.name}</span>
           </button>
         ))}
       </div>

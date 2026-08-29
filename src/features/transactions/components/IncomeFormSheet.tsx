@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ChevronRight } from 'lucide-react'
@@ -10,22 +10,27 @@ import { CategoryIcon } from '@/lib/lucideIcon'
 import { cn } from '@/lib/cn'
 import { singleFlight } from '@/lib/singleFlight'
 import { parseAmountInput } from '@/lib/money'
-import { createIncome } from '@/services/transactionService'
+import { createIncome, updateTransaction } from '@/services/transactionService'
 import { getUserMessage } from '@/db'
 import { incomeFormSchema, incomeFormDefaults, type IncomeFormValues } from '../incomeFormSchema'
 import type { Account, Category, Transaction } from '@/types/entities'
+import type { TransactionListItem } from '../useTransactions'
 
 interface IncomeFormSheetProps {
   open: boolean
+  editing?: TransactionListItem | null
   onClose: () => void
   onSaved: (transaction: Transaction, category: Category, account: Account) => void
 }
 
-// Wrapped in singleFlight once, at module scope, so a rapid double-tap
-// on Save collapses into a single createIncome call instead of two.
 const submitIncome = singleFlight(createIncome)
+const submitIncomeEdit = singleFlight(updateTransaction)
 
-export function IncomeFormSheet({ open, onClose, onSaved }: IncomeFormSheetProps) {
+function pad(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+export function IncomeFormSheet({ open, editing, onClose, onSaved }: IncomeFormSheetProps) {
   const [categorySheetOpen, setCategorySheetOpen] = useState(false)
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
@@ -46,6 +51,30 @@ export function IncomeFormSheet({ open, onClose, onSaved }: IncomeFormSheetProps
   })
 
   const amountInput = watch('amountInput')
+  const isEditing = !!editing
+
+  useEffect(() => {
+    if (!open) return
+    if (editing) {
+      const tx = editing.transaction
+      const d = new Date(tx.date)
+      reset({
+        amountInput: (tx.amount / 100).toFixed(2),
+        categoryId: tx.categoryId ?? '',
+        accountId: tx.accountId,
+        date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+        time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+        description: tx.note ?? '',
+        notes: '',
+      })
+      setSelectedCategory(editing.category ?? null)
+      setSelectedAccount(editing.account ?? null)
+    } else {
+      reset(incomeFormDefaults())
+      setSelectedCategory(null)
+      setSelectedAccount(null)
+    }
+  }, [open, editing, reset])
 
   function resetAndClose() {
     reset(incomeFormDefaults())
@@ -69,14 +98,23 @@ export function IncomeFormSheet({ open, onClose, onSaved }: IncomeFormSheetProps
       const [year, month, day] = values.date.split('-').map(Number)
       const [hours, minutes] = values.time ? values.time.split(':').map(Number) : [12, 0]
       const date = new Date(year, (month ?? 1) - 1, day ?? 1, hours ?? 12, minutes ?? 0).getTime()
+      const note = values.description?.trim() || values.notes?.trim() || ''
 
-      const transaction = await submitIncome({
-        amount,
-        accountId: selectedAccount.id,
-        categoryId: selectedCategory.id,
-        date,
-        note: values.description?.trim() || values.notes?.trim() || '',
-      })
+      const transaction = editing
+        ? await submitIncomeEdit(editing.transaction.id, {
+            amount,
+            accountId: selectedAccount.id,
+            categoryId: selectedCategory.id,
+            date,
+            note,
+          })
+        : await submitIncome({
+            amount,
+            accountId: selectedAccount.id,
+            categoryId: selectedCategory.id,
+            date,
+            note,
+          })
 
       onSaved(transaction, selectedCategory, selectedAccount)
       resetAndClose()
@@ -89,7 +127,7 @@ export function IncomeFormSheet({ open, onClose, onSaved }: IncomeFormSheetProps
 
   return (
     <>
-      <BottomSheet open={open} onClose={resetAndClose} title="Add Income">
+      <BottomSheet open={open} onClose={resetAndClose} title={isEditing ? 'Edit Income' : 'Add Income'}>
         <form onSubmit={onSubmit} className="flex max-h-[70vh] flex-col gap-5 overflow-y-auto pb-1 pr-0.5">
           <AmountInput
             value={amountInput}
@@ -101,7 +139,7 @@ export function IncomeFormSheet({ open, onClose, onSaved }: IncomeFormSheetProps
           <button
             type="button"
             onClick={() => setCategorySheetOpen(true)}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated px-4 py-3.5 text-left"
           >
             {selectedCategory ? (
               <>
@@ -111,19 +149,19 @@ export function IncomeFormSheet({ open, onClose, onSaved }: IncomeFormSheetProps
                 >
                   <CategoryIcon name={selectedCategory.icon} size={16} color={selectedCategory.color} />
                 </span>
-                <span className="text-sm font-medium text-white">{selectedCategory.name}</span>
+                <span className="text-sm font-medium text-foreground">{selectedCategory.name}</span>
               </>
             ) : (
-              <span className="text-sm text-white/40">Select income category</span>
+              <span className="text-sm text-muted-foreground">Select income category</span>
             )}
-            <ChevronRight size={18} className="ml-auto text-white/30" />
+            <ChevronRight size={18} className="ml-auto text-muted-foreground" />
           </button>
           {errors.categoryId && <p className="-mt-3 px-1 text-sm text-red-400">{errors.categoryId.message}</p>}
 
           <button
             type="button"
             onClick={() => setAccountSheetOpen(true)}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated px-4 py-3.5 text-left"
           >
             {selectedAccount ? (
               <>
@@ -133,51 +171,51 @@ export function IncomeFormSheet({ open, onClose, onSaved }: IncomeFormSheetProps
                 >
                   <CategoryIcon name={selectedAccount.icon} size={16} color={selectedAccount.color} />
                 </span>
-                <span className="text-sm font-medium text-white">{selectedAccount.name}</span>
+                <span className="text-sm font-medium text-foreground">{selectedAccount.name}</span>
               </>
             ) : (
-              <span className="text-sm text-white/40">Where did you receive the money?</span>
+              <span className="text-sm text-muted-foreground">Where did you receive the money?</span>
             )}
-            <ChevronRight size={18} className="ml-auto text-white/30" />
+            <ChevronRight size={18} className="ml-auto text-muted-foreground" />
           </button>
           {errors.accountId && <p className="-mt-3 px-1 text-sm text-red-400">{errors.accountId.message}</p>}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Date</label>
+              <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Date</label>
               <input
                 type="date"
                 {...register('date')}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/60"
+                className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary/60"
               />
             </div>
             <div>
-              <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Time (optional)</label>
+              <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Time (optional)</label>
               <input
                 type="time"
                 {...register('time')}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/60"
+                className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary/60"
               />
             </div>
           </div>
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Description (optional)</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Description (optional)</label>
             <input
               type="text"
               placeholder="e.g. Monthly salary"
               {...register('description')}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-emerald-400/60"
+              className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/60"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Notes (optional)</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Notes (optional)</label>
             <textarea
               rows={2}
               placeholder="Anything else worth remembering"
               {...register('notes')}
-              className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-emerald-400/60"
+              className="w-full resize-none rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/60"
             />
           </div>
 
@@ -195,7 +233,7 @@ export function IncomeFormSheet({ open, onClose, onSaved }: IncomeFormSheetProps
                 (isSubmitting || !selectedCategory || !selectedAccount) && 'opacity-50'
               )}
             >
-              {isSubmitting ? 'Saving…' : 'Save Income'}
+              {isSubmitting ? 'Saving…' : isEditing ? 'Save Changes' : 'Save Income'}
             </button>
           </div>
         </form>

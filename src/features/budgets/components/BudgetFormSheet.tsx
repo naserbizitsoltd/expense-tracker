@@ -172,22 +172,22 @@ export function BudgetFormSheet({ open, onClose, budget, onSaved }: BudgetFormSh
           />
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Budget name (optional)</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Budget name (optional)</label>
             <input
               type="text"
               placeholder="e.g. Food & Dining"
               {...register('name')}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-emerald-400/60"
+              className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/60"
             />
           </div>
 
-          <div className="flex rounded-xl border border-white/10 bg-white/5 p-1">
+          <div className="flex rounded-xl border border-border bg-surface-elevated p-1">
             <button
               type="button"
               onClick={() => setValue('isOverall', false)}
               className={cn(
                 'flex-1 rounded-lg py-2 text-sm font-semibold transition-all duration-150',
-                !isOverall ? 'bg-emerald-400 text-black' : 'text-white/50'
+                !isOverall ? 'bg-emerald-400 text-black' : 'text-muted-foreground'
               )}
             >
               Category
@@ -201,7 +201,7 @@ export function BudgetFormSheet({ open, onClose, budget, onSaved }: BudgetFormSh
               }}
               className={cn(
                 'flex-1 rounded-lg py-2 text-sm font-semibold transition-all duration-150',
-                isOverall ? 'bg-emerald-400 text-black' : 'text-white/50'
+                isOverall ? 'bg-emerald-400 text-black' : 'text-muted-foreground'
               )}
             >
               Overall spending
@@ -213,7 +213,7 @@ export function BudgetFormSheet({ open, onClose, budget, onSaved }: BudgetFormSh
               <button
                 type="button"
                 onClick={() => setCategorySheetOpen(true)}
-                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left"
+                className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated px-4 py-3.5 text-left"
               >
                 {selectedCategory ? (
                   <>
@@ -223,12 +223,12 @@ export function BudgetFormSheet({ open, onClose, budget, onSaved }: BudgetFormSh
                     >
                       <CategoryIcon name={selectedCategory.icon} size={16} color={selectedCategory.color} />
                     </span>
-                    <span className="text-sm font-medium text-white">{selectedCategory.name}</span>
+                    <span className="text-sm font-medium text-foreground">{selectedCategory.name}</span>
                   </>
                 ) : (
-                  <span className="text-sm text-white/40">Select expense category</span>
+                  <span className="text-sm text-muted-foreground">Select expense category</span>
                 )}
-                <ChevronRight size={18} className="ml-auto text-white/30" />
+                <ChevronRight size={18} className="ml-auto text-muted-foreground" />
               </button>
               {!selectedCategory && categoryId === '' && (
                 <p className="-mt-3 px-1 text-sm text-red-400">Choose a category</p>
@@ -237,7 +237,7 @@ export function BudgetFormSheet({ open, onClose, budget, onSaved }: BudgetFormSh
           )}
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Period</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Period</label>
             <div className="grid grid-cols-4 gap-2">
               {budgetPeriods.map((p) => (
                 <button
@@ -248,7 +248,7 @@ export function BudgetFormSheet({ open, onClose, budget, onSaved }: BudgetFormSh
                     'rounded-xl border py-2 text-xs font-semibold transition-colors',
                     period === p
                       ? 'border-emerald-400 bg-emerald-400/15 text-emerald-300'
-                      : 'border-white/10 bg-white/5 text-white/50'
+                      : 'border-border bg-surface-elevated text-muted-foreground'
                   )}
                 >
                   {PERIOD_LABELS[p]}
@@ -259,21 +259,21 @@ export function BudgetFormSheet({ open, onClose, budget, onSaved }: BudgetFormSh
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Start date</label>
+              <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Start date</label>
               <input
                 type="date"
                 {...register('startDate')}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/60"
+                className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary/60"
               />
             </div>
             <div>
-              <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">
+              <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">
                 End date {period === 'custom' ? '' : '(optional)'}
               </label>
               <input
                 type="date"
                 {...register('endDate')}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400/60"
+                className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary/60"
               />
             </div>
           </div>
@@ -281,12 +281,12 @@ export function BudgetFormSheet({ open, onClose, budget, onSaved }: BudgetFormSh
           {errors.endDate && <p className="px-1 text-sm text-red-400">{errors.endDate.message}</p>}
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-white/50">Notes (optional)</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Notes (optional)</label>
             <textarea
               rows={2}
               placeholder="Anything else worth remembering"
               {...register('notes')}
-              className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-emerald-400/60"
+              className="w-full resize-none rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/60"
             />
             {errors.notes && <p className="mt-1 px-1 text-sm text-red-400">{errors.notes.message}</p>}
           </div>

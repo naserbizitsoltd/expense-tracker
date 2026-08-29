@@ -57,7 +57,7 @@ export function NotificationsSection() {
           aria-label={enabled ? 'Disable notifications' : 'Enable notifications'}
           className={cn(
             'inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-colors disabled:opacity-50',
-            enabled ? 'bg-primary justify-end' : 'bg-white/10 justify-start'
+            enabled ? 'bg-primary justify-end' : 'bg-border justify-start'
           )}
         >
           <span className="h-6 w-6 rounded-full bg-white shadow" />
