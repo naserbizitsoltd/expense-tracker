@@ -67,7 +67,7 @@ export function FinancialCalendarPage({ onBack }: FinancialCalendarPageProps) {
 
   return (
     <AppShell title="Financial Calendar" headerBack={onBack}>
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-5 overflow-x-hidden">
         <Card className="flex items-center justify-between">
           <button
             onClick={handlePreviousMonth}
