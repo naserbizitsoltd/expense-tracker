@@ -14,10 +14,27 @@ export const transferFormSchema = z
     time: z.string().trim().optional(),
     description: z.string().trim().max(80, 'Keep it under 80 characters').optional(),
     notes: z.string().trim().max(200, 'Keep notes under 200 characters').optional(),
+    hasTransferCharge: z.boolean(),
+    chargeAmountInput: z.string().trim().optional(),
   })
   .refine((v) => v.fromAccountId === '' || v.toAccountId === '' || v.fromAccountId !== v.toAccountId, {
     message: 'From and To accounts must be different',
     path: ['toAccountId'],
+  })
+  .superRefine((v, ctx) => {
+    if (!v.hasTransferCharge) return
+    const raw = v.chargeAmountInput?.trim() ?? ''
+    if (raw === '') {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Enter the transfer charge amount', path: ['chargeAmountInput'] })
+      return
+    }
+    if (!/^\d+(\.\d{1,2})?$/.test(raw)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Enter a valid amount, e.g. 10 or 10.50', path: ['chargeAmountInput'] })
+      return
+    }
+    if (Number(raw) <= 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Charge must be greater than zero', path: ['chargeAmountInput'] })
+    }
   })
 
 export type TransferFormValues = z.infer<typeof transferFormSchema>
@@ -30,4 +47,6 @@ export const transferFormDefaults = (): TransferFormValues => ({
   time: '',
   description: '',
   notes: '',
+  hasTransferCharge: false,
+  chargeAmountInput: '',
 })

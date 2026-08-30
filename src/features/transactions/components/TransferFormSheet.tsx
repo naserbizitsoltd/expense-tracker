@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowDownUp, ChevronRight } from 'lucide-react'
@@ -9,9 +9,10 @@ import { CategoryIcon } from '@/lib/lucideIcon'
 import { cn } from '@/lib/cn'
 import { singleFlight } from '@/lib/singleFlight'
 import { parseAmountInput } from '@/lib/money'
-import { createTransfer, updateTransaction } from '@/services/transactionService'
+import { createTransfer, createTransferWithCharge, updateTransaction } from '@/services/transactionService'
 import { getUserMessage } from '@/db'
 import { transferFormSchema, transferFormDefaults, type TransferFormValues } from '../transferFormSchema'
+import { useCategories } from '@/features/categories/useCategories'
 import type { Account, Transaction } from '@/types/entities'
 import type { TransactionListItem } from '../useTransactions'
 
@@ -24,6 +25,7 @@ interface TransferFormSheetProps {
 
 const submitTransfer = singleFlight(createTransfer)
 const submitTransferEdit = singleFlight(updateTransaction)
+const submitTransferWithCharge = singleFlight(createTransferWithCharge)
 
 function pad(n: number) {
   return String(n).padStart(2, '0')
@@ -51,6 +53,14 @@ export function TransferFormSheet({ open, editing, onClose, onSaved }: TransferF
 
   const amountInput = watch('amountInput')
   const isEditing = !!editing
+  const hasTransferCharge = watch('hasTransferCharge')
+  const chargeAmountInput = watch('chargeAmountInput')
+
+  const { activeCategories } = useCategories()
+  const transferChargeCategory = useMemo(
+    () => activeCategories.find((c) => c.type === 'expense' && c.name.trim().toLowerCase() === 'transfer charge'),
+    [activeCategories]
+  )
 
   useEffect(() => {
     if (!open) return
@@ -65,6 +75,8 @@ export function TransferFormSheet({ open, editing, onClose, onSaved }: TransferF
         time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
         description: tx.note ?? '',
         notes: '',
+        hasTransferCharge: false,
+        chargeAmountInput: '',
       })
       setFromAccount(editing.account ?? null)
       setToAccount(editing.toAccount ?? null)
@@ -112,21 +124,47 @@ export function TransferFormSheet({ open, editing, onClose, onSaved }: TransferF
       const date = new Date(year, (month ?? 1) - 1, day ?? 1, hours ?? 12, minutes ?? 0).getTime()
       const note = values.description?.trim() || values.notes?.trim() || ''
 
-      const transaction = editing
-        ? await submitTransferEdit(editing.transaction.id, {
-            amount,
-            accountId: fromAccount.id,
-            toAccountId: toAccount.id,
-            date,
-            note,
-          })
-        : await submitTransfer({
-            amount,
-            accountId: fromAccount.id,
-            toAccountId: toAccount.id,
-            date,
-            note,
-          })
+      let transaction: Transaction
+
+      if (editing) {
+        // Editing: we don't support editing the charge flag for now
+        transaction = await submitTransferEdit(editing.transaction.id, {
+          amount,
+          accountId: fromAccount.id,
+          toAccountId: toAccount.id,
+          date,
+          note,
+        })
+      } else if (values.hasTransferCharge && values.chargeAmountInput) {
+        const chargeAmount = parseAmountInput(values.chargeAmountInput, fromAccount.currency)
+        if (chargeAmount === null || chargeAmount <= 0) {
+          setSubmitError('Enter a valid charge amount.')
+          return
+        }
+        if (!transferChargeCategory) {
+          setSubmitError('No "Transfer Charge" expense category found. Add one in Categories first.')
+          return
+        }
+        const result = await submitTransferWithCharge({
+          amount,
+          accountId: fromAccount.id,
+          toAccountId: toAccount.id,
+          date,
+          note,
+          chargeAmount,
+          chargeCategoryId: transferChargeCategory.id,
+          chargeNote: values.description?.trim() || 'Transfer charge',
+        })
+        transaction = result.transfer
+      } else {
+        transaction = await submitTransfer({
+          amount,
+          accountId: fromAccount.id,
+          toAccountId: toAccount.id,
+          date,
+          note,
+        })
+      }
 
       onSaved(transaction, fromAccount, toAccount)
       resetAndClose()
@@ -213,6 +251,42 @@ export function TransferFormSheet({ open, editing, onClose, onSaved }: TransferF
             <p className="-mt-3 px-1 text-sm text-red-400">
               {errors.fromAccountId?.message ?? errors.toAccountId?.message}
             </p>
+          )}
+
+          {/* Transfer Charge Toggle */}
+          {!isEditing && (
+            <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setValue('hasTransferCharge', !hasTransferCharge, { shouldValidate: true })}
+                className={cn(
+                  'relative h-6 w-11 shrink-0 overflow-hidden rounded-full transition-colors',
+                  hasTransferCharge ? 'bg-emerald-400' : 'bg-muted-foreground/30'
+                )}
+              >
+                <span
+                  className={cn(
+                    'absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform',
+                    hasTransferCharge ? 'translate-x-5' : 'translate-x-0'
+                  )}
+                />
+              </button>
+              <span className="flex-1 text-sm font-medium text-foreground">Add transfer charge</span>
+            </div>
+          )}
+
+          {hasTransferCharge && !isEditing && (
+            <div className="relative">
+              <AmountInput
+                value={chargeAmountInput ?? ''}
+                onChange={(v) => setValue('chargeAmountInput', v, { shouldValidate: true })}
+                currency={fromAccount?.currency ?? 'BDT'}
+                error={errors.chargeAmountInput?.message}
+              />
+              <p className="mt-1 px-1 text-xs text-muted-foreground">
+                This will be recorded as a separate expense from the source account
+              </p>
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">

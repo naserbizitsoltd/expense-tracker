@@ -42,6 +42,14 @@ export type CreateExpenseInput = Omit<TransactionInput, 'type' | 'toAccountId' |
 export type CreateIncomeInput = Omit<TransactionInput, 'type' | 'toAccountId'> & { relatedEntityId?: string | null }
 export type CreateTransferInput = Omit<TransactionInput, 'type' | 'categoryId'> & { toAccountId: string }
 
+export interface CreateTransferWithChargeInput extends CreateTransferInput {
+  /** Integer, smallest currency unit. 0 or omitted = no charge. */
+  chargeAmount?: number
+  /** Expense category the charge is logged under. Required when chargeAmount > 0. */
+  chargeCategoryId?: string
+  chargeNote?: string
+}
+
 // Fields a caller may change on an existing transaction. `type` is
 // intentionally excluded — converting an expense into a transfer (etc)
 // is a delete-and-recreate, not an edit, since the shape of the ledger
@@ -236,6 +244,112 @@ export async function createIncome(input: CreateIncomeInput): Promise<Transactio
 
 export async function createTransfer(input: CreateTransferInput): Promise<Transaction> {
   return createTransaction('transfer', { ...input, type: 'transfer', categoryId: null })
+}
+
+/**
+ * Creates a transfer and, optionally, a linked transfer-charge expense,
+ * atomically. The destination account always receives exactly
+ * `input.amount`. If a charge is given, the SOURCE account is debited
+ * `input.amount + chargeAmount` in total: the transfer amount via the
+ * normal transfer ledger entries, plus a separate 'expense' transaction
+ * for the charge (so it counts in expense totals/reports), dated the
+ * same as the transfer and linked back to it via relatedEntityId.
+ */
+export async function createTransferWithCharge(
+  input: CreateTransferWithChargeInput
+): Promise<{ transfer: Transaction; charge: Transaction | null }> {
+  const { chargeAmount = 0, chargeCategoryId, chargeNote, ...transferInput } = input
+
+  if (!Number.isInteger(chargeAmount) || chargeAmount < 0) {
+    throw new AppDbError('INVALID_DATA', 'Transfer charge must be a non-negative integer in the smallest currency unit.')
+  }
+  if (chargeAmount > 0 && !chargeCategoryId) {
+    throw new AppDbError('INVALID_DATA', 'A category is required to record the transfer charge.')
+  }
+
+  try {
+    return await db.transaction(
+      'rw',
+      db.transactions,
+      db.ledgerEntries,
+      db.accounts,
+      db.categories,
+      async () => {
+        const validated = await validateTransactionInput({ ...transferInput, type: 'transfer', categoryId: null })
+        const fromAccount = (await db.accounts.get(validated.accountId))!
+
+        const now = Date.now()
+        const transferId = generateId()
+
+        const transfer: Transaction = {
+          id: transferId,
+          type: 'transfer',
+          amount: validated.amount,
+          currency: fromAccount.currency,
+          accountId: validated.accountId,
+          toAccountId: validated.toAccountId,
+          categoryId: null,
+          creditCardId: null,
+          debitCardId: null,
+          relatedEntityId: null,
+          note: validated.note,
+          date: validated.date,
+          createdAt: now,
+          updatedAt: now,
+        }
+
+        const transferEntries = buildLedgerEntriesFor(
+          transferId,
+          'transfer',
+          validated.amount,
+          validated.accountId,
+          validated.toAccountId,
+          validated.date,
+          now
+        )
+
+        await db.transactions.add(transfer)
+        await db.ledgerEntries.bulkAdd(transferEntries)
+
+        let charge: Transaction | null = null
+        if (chargeAmount > 0) {
+          await requireCategory(chargeCategoryId as string, 'expense')
+
+          const chargeId = generateId()
+          charge = {
+            id: chargeId,
+            type: 'expense',
+            amount: chargeAmount,
+            currency: fromAccount.currency,
+            accountId: validated.accountId,
+            toAccountId: null,
+            categoryId: chargeCategoryId as string,
+            creditCardId: null,
+            debitCardId: null,
+            // Reused here (not a loan/dps/fdr id) to link this charge
+            // back to the transfer it belongs to — used for cascade delete.
+            relatedEntityId: transferId,
+            note: chargeNote?.trim() || 'Transfer charge',
+            date: validated.date,
+            createdAt: now,
+            updatedAt: now,
+          }
+
+          const chargeEntry = buildLedgerEntry(chargeId, validated.accountId, -chargeAmount, validated.date, now)
+          await db.transactions.add(charge)
+          await db.ledgerEntries.add(chargeEntry)
+        }
+
+        for (const accountId of affectedAccountIds(validated.accountId, validated.toAccountId)) {
+          await reconcileAccountBalanceCache(accountId)
+        }
+
+        return { transfer, charge }
+      }
+    )
+  } catch (error) {
+    throw toAppDbError(error)
+  }
 }
 
 export interface CreditCardPaymentInput {
@@ -542,6 +656,22 @@ export async function deleteTransaction(id: string): Promise<void> {
       async () => {
         const existing = await db.transactions.get(id)
         if (!existing) throw new AppDbError('NOT_FOUND', 'Transaction not found.')
+
+        // A transfer with a linked transfer-charge expense: delete the
+        // charge too, so it doesn't linger pointing at a transfer that
+        // no longer exists.
+        if (existing.type === 'transfer') {
+          const linkedCharge = await db.transactions
+            .where('relatedEntityId')
+            .equals(id)
+            .and((t) => t.type === 'expense')
+            .first()
+          if (linkedCharge) {
+            await db.ledgerEntries.where('transactionId').equals(linkedCharge.id).delete()
+            await db.transactions.delete(linkedCharge.id)
+            await reconcileAccountBalanceCache(linkedCharge.accountId)
+          }
+        }
 
         if (existing.type === 'credit_card') {
           // Bill payment: reverse the real ledger entry against the source

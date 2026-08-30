@@ -32,6 +32,7 @@ const DEFAULT_CATEGORIES: DefaultCategorySeed[] = [
   { name: 'Subscriptions', type: 'expense', icon: 'Repeat', color: '#6366f1' },
   { name: 'Insurance', type: 'expense', icon: 'ShieldCheck', color: '#22c55e' },
   { name: 'Taxes & Fees', type: 'expense', icon: 'FileText', color: '#64748b' },
+  { name: 'Transfer Charge', type: 'expense', icon: 'HandCoins', color: '#f59e0b' },
   { name: 'Other', type: 'expense', icon: 'MoreHorizontal', color: '#64748b' },
   // Income
   { name: 'Salary', type: 'income', icon: 'Wallet', color: '#22c55e' },
