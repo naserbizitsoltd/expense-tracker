@@ -12,7 +12,7 @@ export interface TransactionListItem {
 
 /** Reactive, newest-first list of expense + income + transfer transactions, joined for display. */
 export function useTransactionsList() {
-    const transactionsState = useLiveQuery(
+  const transactionsState = useLiveQuery(
     () => db.transactions.where('type').anyOf(['expense', 'income', 'transfer', 'credit_card']).reverse().sortBy('date'),
     []
   )
@@ -58,4 +58,18 @@ export function useActiveAccounts() {
     isLoading: state.isLoading,
     error: state.error,
   }
+}
+
+/** Every distinct tag used across all transactions, alphabetical — feeds TagInput's suggestions. */
+export function useAllTags() {
+  const state = useLiveQuery(() => db.transactions.toArray(), [])
+  return useMemo(() => {
+    const set = new Set<string>()
+    for (const t of state.data ?? []) {
+      for (const tag of t.tags ?? []) {
+        set.add(tag)
+      }
+    }
+    return Array.from(set).sort()
+  }, [state.data])
 }

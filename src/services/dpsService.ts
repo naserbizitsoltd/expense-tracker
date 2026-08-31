@@ -213,6 +213,8 @@ export async function contributeToDps(input: ContributeToDpsInput): Promise<DpsC
           relatedEntityId: dpsId,
           note: `Contribution to ${dps.name}`,
           date,
+          tags: [],
+          splitGroupId: null,
           createdAt: now,
           updatedAt: now,
         }
@@ -382,6 +384,8 @@ export async function receiveDpsMaturity(input: ReceiveDpsMaturityInput): Promis
           relatedEntityId: dpsId,
           note: `Maturity payout — ${dps.name}`,
           date,
+          tags: [],
+          splitGroupId: null,
           createdAt: now,
           updatedAt: now,
         }

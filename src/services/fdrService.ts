@@ -101,6 +101,8 @@ export async function createFdr(input: CreateFdrInput): Promise<Fdr> {
         relatedEntityId: fdrId,
         note: `Opened FDR — ${name.trim()}`,
         date: startDate,
+        tags: [],
+        splitGroupId: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -245,6 +247,8 @@ export async function receiveFdrMaturity(input: ReceiveFdrMaturityInput): Promis
         relatedEntityId: fdrId,
         note: `Maturity payout — ${fdr.name}`,
         date,
+        tags: [],
+        splitGroupId: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -387,6 +391,8 @@ export async function renewFdr(input: RenewFdrInput): Promise<RenewFdrResult> {
         relatedEntityId: oldFdrId,
         note: `Matured — renewed into ${newFdr.name.trim()}`,
         date: now,
+        tags: [],
+        splitGroupId: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -418,6 +424,8 @@ export async function renewFdr(input: RenewFdrInput): Promise<RenewFdrResult> {
         relatedEntityId: newFdrId,
         note: `Opened FDR — ${newFdr.name.trim()} (renewed from ${oldFdrRow.name})`,
         date: newFdr.startDate,
+        tags: [],
+        splitGroupId: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -552,6 +560,8 @@ export async function withdrawFdrPrematurely(input: PrematureWithdrawFdrInput): 
         relatedEntityId: fdrId,
         note: `Premature withdrawal — ${fdr.name}`,
         date,
+        tags: [],
+        splitGroupId: null,
         createdAt: now,
         updatedAt: now,
       }

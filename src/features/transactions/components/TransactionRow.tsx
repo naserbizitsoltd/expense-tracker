@@ -111,11 +111,25 @@ export function TransactionRow({ transaction, category, account, toAccount, cred
               Recurring
             </span>
           )}
+          {transaction.splitGroupId && (
+            <span className="shrink-0 rounded-full bg-surface-elevated px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+              Split
+            </span>
+          )}
         </p>
         <p className="truncate text-xs text-muted-foreground">
           {format(transaction.date, 'MMM d, h:mm a')} ·{' '}
           {creditCard ? `${creditCard.name} •••• ${creditCard.last4}` : account?.name ?? 'Unknown account'}
         </p>
+        {transaction.tags && transaction.tags.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {transaction.tags.map((tag) => (
+              <span key={tag} className="rounded-full bg-primary-muted px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <span className={cn('shrink-0 text-sm font-semibold', isIncome ? 'text-success' : 'text-danger')}>

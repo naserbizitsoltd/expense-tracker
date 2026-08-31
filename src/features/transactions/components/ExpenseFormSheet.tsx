@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { BottomSheet } from './BottomSheet'
 import { AmountInput } from './AmountInput'
 import { CategorySelectSheet } from './CategorySelectSheet'
 import { PaymentSourceSelectSheet } from './PaymentSourceSelectSheet'
+import { TagInput } from './TagInput'
 import { CategoryIcon } from '@/lib/lucideIcon'
 import { cn } from '@/lib/cn'
 import { singleFlight } from '@/lib/singleFlight'
 import { parseAmountInput } from '@/lib/money'
-import { createExpense, updateTransaction } from '@/services/transactionService'
+import { createExpense, createSplitExpense, updateTransaction } from '@/services/transactionService'
 import { getUserMessage } from '@/db'
 import { expenseFormSchema, expenseFormDefaults, type ExpenseFormValues } from '../expenseFormSchema'
+import { useAllTags } from '../useTransactions'
 import type { Account, Category, CreditCard, DebitCard, Transaction } from '@/types/entities'
 import type { TransactionListItem } from '../useTransactions'
 
@@ -23,7 +25,18 @@ interface ExpenseFormSheetProps {
   onSaved: (transaction: Transaction, category: Category, account: Account | null, creditCard?: CreditCard | null) => void
 }
 
+interface SplitLine {
+  id: string
+  category: Category | null
+  amountInput: string
+}
+
+function newSplitLine(): SplitLine {
+  return { id: crypto.randomUUID(), category: null, amountInput: '' }
+}
+
 const submitExpense = singleFlight(createExpense)
+const submitSplitExpense = singleFlight(createSplitExpense)
 const submitExpenseEdit = singleFlight(updateTransaction)
 
 function pad(n: number) {
@@ -31,6 +44,7 @@ function pad(n: number) {
 }
 
 export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFormSheetProps) {
+  const allTags = useAllTags()
   const [categorySheetOpen, setCategorySheetOpen] = useState(false)
   const [sourceSheetOpen, setSourceSheetOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
@@ -39,6 +53,10 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
   const [selectedDebitCard, setSelectedDebitCard] = useState<{ debitCard: DebitCard; account: Account } | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [tags, setTags] = useState<string[]>([])
+  const [isSplit, setIsSplit] = useState(false)
+  const [splitLines, setSplitLines] = useState<SplitLine[]>([newSplitLine(), newSplitLine()])
+  const [splitCategorySheetForLine, setSplitCategorySheetForLine] = useState<string | null>(null)
 
   const {
     register,
@@ -57,6 +75,8 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
   const isEditing = !!editing
 
   // Prefill the form whenever an "editing" transaction is handed in.
+  // Split mode is never entered from an edit — each slice of a split
+  // receipt is edited individually, like any other expense.
   useEffect(() => {
     if (!open) return
     if (editing) {
@@ -70,9 +90,13 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
         time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
         description: tx.note ?? '',
         notes: '',
+        tags: tx.tags ?? [],
       })
       setSelectedCategory(editing.category ?? null)
       setSelectedDebitCard(null)
+      setTags(tx.tags ?? [])
+      setIsSplit(false)
+      setSplitLines([newSplitLine(), newSplitLine()])
       if (editing.creditCard) {
         setSelectedCreditCard(editing.creditCard)
         setSelectedAccount(null)
@@ -86,6 +110,9 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
       setSelectedAccount(null)
       setSelectedCreditCard(null)
       setSelectedDebitCard(null)
+      setTags([])
+      setIsSplit(false)
+      setSplitLines([newSplitLine(), newSplitLine()])
     }
   }, [open, editing, reset])
 
@@ -96,11 +123,16 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
     setSelectedCreditCard(null)
     setSelectedDebitCard(null)
     setSubmitError(null)
+    setTags([])
+    setIsSplit(false)
+    setSplitLines([newSplitLine(), newSplitLine()])
     onClose()
   }
 
   const onSubmit = handleSubmit(async (values) => {
-    if (!selectedCategory || (!selectedAccount && !selectedCreditCard && !selectedDebitCard)) return
+    if (!selectedAccount && !selectedCreditCard && !selectedDebitCard) return
+    if (!isSplit && !selectedCategory) return
+
     setSubmitError(null)
     setIsSubmitting(true)
     try {
@@ -115,44 +147,91 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
       const date = new Date(year, (month ?? 1) - 1, day ?? 1, hours ?? 12, minutes ?? 0).getTime()
       const note = values.description?.trim() || values.notes?.trim() || ''
 
+      if (isSplit) {
+        const splits = splitLines.map((l) => ({
+          categoryId: l.category?.id ?? '',
+          amount: parseAmountInput(l.amountInput, sourceCurrency) ?? 0,
+        }))
+        if (splits.some((s) => !s.categoryId || s.amount <= 0)) {
+          setSubmitError('Every split needs a category and an amount greater than zero.')
+          return
+        }
+        const splitTotal = splits.reduce((sum, s) => sum + s.amount, 0)
+        if (splitTotal !== amount) {
+          setSubmitError('Split amounts must add up to the total.')
+          return
+        }
+
+        const transactions = await submitSplitExpense(
+          selectedCreditCard
+            ? {
+                creditCardId: selectedCreditCard.id,
+                date,
+                note,
+                tags,
+                splits,
+              }
+            : {
+                accountId: (selectedDebitCard?.account.id ?? selectedAccount?.id) as string,
+                debitCardId: selectedDebitCard?.debitCard.id ?? null,
+                date,
+                note,
+                tags,
+                splits,
+              }
+        )
+        onSaved(
+          transactions[0],
+          (splitLines[0].category as Category) ?? undefined,
+          selectedAccount ?? selectedDebitCard?.account ?? null,
+          selectedCreditCard
+        )
+        resetAndClose()
+        return
+      }
+
       let transaction: Transaction
       if (editing) {
         // Payment source is locked during edit (see PaymentSourceSelectSheet
-        // being disabled below) so we only ever send amount/category/date/note.
+        // being disabled below) so we only ever send amount/category/date/note/tags.
         transaction = await submitExpenseEdit(editing.transaction.id, {
           amount,
-          categoryId: selectedCategory.id,
+          categoryId: selectedCategory!.id,
           date,
           note,
+          tags,
         })
       } else {
         transaction = selectedCreditCard
           ? await submitExpense({
               creditCardId: selectedCreditCard.id,
               amount,
-              categoryId: selectedCategory.id,
+              categoryId: selectedCategory!.id,
               date,
               note,
+              tags,
             })
           : selectedDebitCard
             ? await submitExpense({
                 accountId: selectedDebitCard.account.id,
                 debitCardId: selectedDebitCard.debitCard.id,
                 amount,
-                categoryId: selectedCategory.id,
+                categoryId: selectedCategory!.id,
                 date,
                 note,
+                tags,
               })
             : await submitExpense({
                 accountId: selectedAccount!.id,
                 amount,
-                categoryId: selectedCategory.id,
+                categoryId: selectedCategory!.id,
                 date,
                 note,
+                tags,
               })
       }
 
-      onSaved(transaction, selectedCategory, selectedAccount ?? selectedDebitCard?.account ?? null, selectedCreditCard)
+      onSaved(transaction, selectedCategory!, selectedAccount ?? selectedDebitCard?.account ?? null, selectedCreditCard)
       resetAndClose()
     } catch (error) {
       setSubmitError(getUserMessage(error))
@@ -161,10 +240,19 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
     }
   })
 
+  const splitAssigned = splitLines.reduce((sum, l) => sum + (parseAmountInput(l.amountInput, sourceCurrency) ?? 0), 0)
+  const splitTotal = parseAmountInput(amountInput, sourceCurrency) ?? 0
+  const splitRemaining = splitTotal - splitAssigned
+
+  const canSubmit =
+    !isSubmitting &&
+    (selectedAccount || selectedCreditCard || selectedDebitCard) &&
+    (isSplit ? true : !!selectedCategory)
+
   return (
     <>
       <BottomSheet open={open} onClose={resetAndClose} title={isEditing ? 'Edit Expense' : 'Add Expense'}>
-        <form onSubmit={onSubmit} className="flex max-h-[70vh] flex-col gap-5 overflow-y-auto pb-1 pr-0.5">
+        <form onSubmit={onSubmit} className="flex flex-col gap-5 pb-1">
           <AmountInput
             value={amountInput}
             onChange={(v) => setValue('amountInput', v, { shouldValidate: true })}
@@ -172,27 +260,108 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
             error={errors.amountInput?.message}
           />
 
-          <button
-            type="button"
-            onClick={() => setCategorySheetOpen(true)}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated px-4 py-3.5 text-left"
-          >
-            {selectedCategory ? (
-              <>
+          {!isEditing && (
+            <div className="flex items-center justify-between px-1">
+              <span className="text-sm font-medium text-foreground">Split across categories</span>
+              <button
+                type="button"
+                onClick={() => setIsSplit((s) => !s)}
+                className={cn(
+                  'relative h-6 w-11 rounded-full transition-colors',
+                  isSplit ? 'bg-primary' : 'bg-surface-elevated border border-border'
+                )}
+              >
                 <span
-                  className="flex h-9 w-9 items-center justify-center rounded-full"
-                  style={{ backgroundColor: `${selectedCategory.color}26` }}
-                >
-                  <CategoryIcon name={selectedCategory.icon} size={16} color={selectedCategory.color} />
-                </span>
-                <span className="text-sm font-medium text-foreground">{selectedCategory.name}</span>
-              </>
-            ) : (
-              <span className="text-sm text-muted-foreground">Select category</span>
-            )}
-            <ChevronRight size={18} className="ml-auto text-muted-foreground" />
-          </button>
-          {errors.categoryId && <p className="-mt-3 px-1 text-sm text-red-400">{errors.categoryId.message}</p>}
+                  className={cn(
+                    'absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform',
+                    isSplit ? 'translate-x-5' : 'translate-x-0'
+                  )}
+                />
+              </button>
+            </div>
+          )}
+
+          {!isSplit ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setCategorySheetOpen(true)}
+                className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated px-4 py-3.5 text-left"
+              >
+                {selectedCategory ? (
+                  <>
+                    <span
+                      className="flex h-9 w-9 items-center justify-center rounded-full"
+                      style={{ backgroundColor: `${selectedCategory.color}26` }}
+                    >
+                      <CategoryIcon name={selectedCategory.icon} size={16} color={selectedCategory.color} />
+                    </span>
+                    <span className="text-sm font-medium text-foreground">{selectedCategory.name}</span>
+                  </>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Select category</span>
+                )}
+                <ChevronRight size={18} className="ml-auto text-muted-foreground" />
+              </button>
+              {errors.categoryId && <p className="-mt-3 px-1 text-sm text-red-400">{errors.categoryId.message}</p>}
+            </>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {splitLines.map((line) => (
+                <div key={line.id} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSplitCategorySheetForLine(line.id)}
+                    className="flex flex-1 items-center gap-2 rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-left"
+                  >
+                    {line.category ? (
+                      <>
+                        <CategoryIcon name={line.category.icon} size={14} color={line.category.color} />
+                        <span className="truncate text-sm text-foreground">{line.category.name}</span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Category</span>
+                    )}
+                  </button>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={line.amountInput}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/[^\d.]/g, '')
+                      if (/^\d*\.?\d{0,2}$/.test(v)) {
+                        setSplitLines((rows) => rows.map((r) => (r.id === line.id ? { ...r, amountInput: v } : r)))
+                      }
+                    }}
+                    className="w-24 rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-right text-sm text-foreground outline-none"
+                  />
+                  {splitLines.length > 2 && (
+                    <button
+                      type="button"
+                      aria-label="Remove split line"
+                      onClick={() => setSplitLines((rows) => rows.filter((r) => r.id !== line.id))}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setSplitLines((rows) => [...rows, newSplitLine()])}
+                className="flex items-center gap-1.5 self-start px-1 py-1 text-sm font-medium text-primary"
+              >
+                <Plus size={16} /> Add category
+              </button>
+              <p className={cn('px-1 text-xs', splitRemaining === 0 ? 'text-muted-foreground' : 'text-danger')}>
+                {splitRemaining === 0
+                  ? 'Splits add up to the total.'
+                  : `${splitRemaining > 0 ? 'Remaining to assign' : 'Over by'}: ${Math.abs(splitRemaining / 100).toFixed(2)}`}
+              </p>
+            </div>
+          )}
 
           <button
             type="button"
@@ -277,6 +446,11 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
           </div>
 
           <div>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Tags (optional)</label>
+            <TagInput value={tags} onChange={setTags} suggestions={allTags} />
+          </div>
+
+          <div>
             <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Notes (optional)</label>
             <textarea
               rows={2}
@@ -291,11 +465,11 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
           <div className="pt-2">
             <button
               type="submit"
-              disabled={isSubmitting || !selectedCategory || (!selectedAccount && !selectedCreditCard && !selectedDebitCard)}
+              disabled={!canSubmit}
               className={cn(
                 'w-full rounded-2xl py-4 text-center text-base font-semibold text-black transition-opacity',
                 'bg-emerald-400',
-                (isSubmitting || !selectedCategory || (!selectedAccount && !selectedCreditCard && !selectedDebitCard)) && 'opacity-50'
+                !canSubmit && 'opacity-50'
               )}
             >
               {isSubmitting ? 'Saving…' : isEditing ? 'Save Changes' : 'Save Expense'}
@@ -310,6 +484,13 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
         onSelect={(category) => {
           setSelectedCategory(category)
           setValue('categoryId', category.id, { shouldValidate: true })
+        }}
+      />
+      <CategorySelectSheet
+        open={splitCategorySheetForLine !== null}
+        onClose={() => setSplitCategorySheetForLine(null)}
+        onSelect={(category) => {
+          setSplitLines((rows) => rows.map((r) => (r.id === splitCategorySheetForLine ? { ...r, category } : r)))
         }}
       />
       <PaymentSourceSelectSheet

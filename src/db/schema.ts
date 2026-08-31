@@ -24,7 +24,7 @@ import type {
 } from '@/types/entities'
 import { DB_METADATA_ID } from './id'
 
-export const SCHEMA_VERSION = 22
+export const SCHEMA_VERSION = 23
 
 export class AppDatabase extends Dexie {
   accounts!: Table<Account, string>
@@ -670,6 +670,35 @@ export class AppDatabase extends Dexie {
 
         await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
           schemaVersion: 22,
+          lastMigrationAt: Date.now(),
+          updatedAt: Date.now(),
+        })
+      })
+
+    // v23 — Tags + split transactions. Adds `tags` (multi-entry indexed,
+    // so #tag search can use an index instead of a table scan) and
+    // `splitGroupId` (groups the category-slices of one real-world
+    // purchase recorded via services/transactionService.createSplitExpense
+    // — each slice is an ordinary expense transaction, just tagged with a
+    // shared id) to `transactions`. Existing rows are backfilled with an
+    // empty tag list and no split group, so nothing already saved changes
+    // behavior.
+    this.version(23)
+      .stores({
+        transactions:
+          'id, type, accountId, toAccountId, categoryId, creditCardId, debitCardId, splitGroupId, date, createdAt, *tags',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('transactions')
+          .toCollection()
+          .modify((t: Omit<Transaction, 'tags' | 'splitGroupId'> & { tags?: string[]; splitGroupId?: string | null }) => {
+            if (t.tags === undefined) t.tags = []
+            if (t.splitGroupId === undefined) t.splitGroupId = null
+          })
+
+        await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
+          schemaVersion: 23,
           lastMigrationAt: Date.now(),
           updatedAt: Date.now(),
         })

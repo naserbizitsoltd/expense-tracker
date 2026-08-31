@@ -24,6 +24,7 @@ import {
   requireActiveCreditCard,
   requireActiveDebitCard,
   requireCategory,
+  normalizeTags,
   type TransactionInput,
   type CoreTransactionType,
 } from './transactionValidation'
@@ -106,7 +107,8 @@ async function createTransaction(
   type: CoreTransactionType,
   input: TransactionInput,
   relatedEntityId: string | null = null,
-  debitCardId: string | null = null
+  debitCardId: string | null = null,
+  splitGroupId: string | null = null
 ): Promise<Transaction> {
   try {
     return await db.transaction('rw', db.transactions, db.ledgerEntries, db.accounts, db.categories, db.debitCards, async () => {
@@ -134,6 +136,8 @@ async function createTransaction(
         debitCardId,
         relatedEntityId,
         note: validated.note,
+        tags: validated.tags,
+        splitGroupId,
         date: validated.date,
         createdAt: now,
         updatedAt: now,
@@ -163,17 +167,18 @@ async function createTransaction(
   }
 }
 
-export async function createExpense(input: CreateExpenseInput): Promise<Transaction> {
+export async function createExpense(input: CreateExpenseInput, splitGroupId: string | null = null): Promise<Transaction> {
   const { relatedEntityId = null, accountId, creditCardId, ...rest } = input
   if (creditCardId) {
-    return createCreditCardExpense({ ...rest, creditCardId }, relatedEntityId)
+    return createCreditCardExpense({ ...rest, creditCardId }, relatedEntityId, splitGroupId)
   }
   const { debitCardId, ...core } = rest as typeof rest & { debitCardId?: string | null }
   return createTransaction(
     'expense',
     { ...core, type: 'expense', accountId: accountId as string, toAccountId: null },
     relatedEntityId,
-    debitCardId ?? null
+    debitCardId ?? null,
+    splitGroupId
   )
 }
 
@@ -187,7 +192,8 @@ export async function createExpense(input: CreateExpenseInput): Promise<Transact
  */
 async function createCreditCardExpense(
   input: Omit<TransactionInput, 'type' | 'toAccountId' | 'accountId'> & { creditCardId: string },
-  relatedEntityId: string | null
+  relatedEntityId: string | null,
+  splitGroupId: string | null = null
 ): Promise<Transaction> {
   try {
     return await db.transaction('rw', db.transactions, db.creditCards, db.categories, async () => {
@@ -219,6 +225,8 @@ async function createCreditCardExpense(
         debitCardId: null,
         relatedEntityId,
         note: input.note?.trim() ?? '',
+        tags: normalizeTags(input.tags),
+        splitGroupId,
         date: input.date,
         createdAt: now,
         updatedAt: now,
@@ -293,6 +301,8 @@ export async function createTransferWithCharge(
           debitCardId: null,
           relatedEntityId: null,
           note: validated.note,
+          tags: validated.tags,
+          splitGroupId: null,
           date: validated.date,
           createdAt: now,
           updatedAt: now,
@@ -330,6 +340,8 @@ export async function createTransferWithCharge(
             // back to the transfer it belongs to — used for cascade delete.
             relatedEntityId: transferId,
             note: chargeNote?.trim() || 'Transfer charge',
+            tags: [],
+            splitGroupId: null,
             date: validated.date,
             createdAt: now,
             updatedAt: now,
@@ -402,6 +414,8 @@ export async function payCreditCardBill(input: CreditCardPaymentInput): Promise<
         debitCardId: null,
         relatedEntityId: null,
         note: input.note?.trim() ?? '',
+        tags: [],
+        splitGroupId: null,
         date: input.date,
         createdAt: now,
         updatedAt: now,
@@ -465,6 +479,7 @@ export async function updateTransaction(
           categoryId: changes.categoryId !== undefined ? changes.categoryId : existing.categoryId,
           date: changes.date ?? existing.date,
           note: changes.note !== undefined ? changes.note : existing.note,
+          tags: changes.tags !== undefined ? changes.tags : existing.tags,
         }
         const validated = await validateTransactionInput(merged)
 
@@ -479,6 +494,7 @@ export async function updateTransaction(
           categoryId: validated.categoryId,
           date: validated.date,
           note: validated.note,
+          tags: validated.tags,
           updatedAt: now,
         }
 
@@ -545,6 +561,7 @@ async function updateCreditCardExpense(existing: Transaction, changes: Transacti
     categoryId: newCategoryId,
     date: changes.date ?? existing.date,
     note: changes.note !== undefined ? changes.note?.trim() ?? '' : existing.note,
+    tags: changes.tags !== undefined ? normalizeTags(changes.tags) : existing.tags,
     updatedAt: now,
   }
 
@@ -605,6 +622,7 @@ async function updateCreditCardPayment(existing: Transaction, changes: Transacti
     currency: account.currency,
     date: newDate,
     note: changes.note !== undefined ? changes.note?.trim() ?? '' : existing.note,
+    tags: changes.tags !== undefined ? normalizeTags(changes.tags) : existing.tags,
     updatedAt: now,
   }
 
@@ -772,4 +790,81 @@ export async function deleteTransaction(id: string): Promise<void> {
 // the engine, without importing from the validation module directly.
 export function isSupportedTransactionType(type: TransactionType): type is CoreTransactionType {
   return type === 'expense' || type === 'income' || type === 'transfer'
+}
+
+// Split expense support
+export interface SplitExpenseLine {
+  categoryId: string
+  amount: number // integer, smallest unit, > 0 — this slice's share of the receipt
+  note?: string // optional per-slice note; falls back to the shared receipt note
+}
+
+export type CreateSplitExpenseInput = {
+  date: number
+  note?: string // shared receipt note, e.g. "Agora grocery run"
+  tags?: string[]
+  splits: SplitExpenseLine[] // at least 2 — a single-category "split" is just a normal expense
+} & (
+  | { accountId: string; creditCardId?: null; debitCardId?: string | null }
+  | { accountId?: null; creditCardId: string }
+)
+
+/**
+ * Records one real-world purchase that spans multiple categories (a
+ * grocery receipt that's part food, part household, say) as N ordinary
+ * expense transactions — one per category slice — linked by a shared
+ * `splitGroupId`. Each slice goes through createExpense exactly like a
+ * normal expense, so ledger entries, balance updates, and credit-limit
+ * checks all behave identically to today; nothing about the core
+ * engine changes, and every slice is independently editable/deletable
+ * afterwards like any other transaction.
+ */
+export async function createSplitExpense(input: CreateSplitExpenseInput): Promise<Transaction[]> {
+  if (!Array.isArray(input.splits) || input.splits.length < 2) {
+    throw new AppDbError('INVALID_DATA', 'A split expense needs at least 2 category slices.')
+  }
+  for (const line of input.splits) {
+    if (!Number.isInteger(line.amount) || line.amount <= 0) {
+      throw new AppDbError('INVALID_DATA', 'Each split amount must be a positive integer in the smallest currency unit.')
+    }
+    if (!line.categoryId) {
+      throw new AppDbError('INVALID_DATA', 'Each split needs a category.')
+    }
+  }
+
+  const splitGroupId = generateId()
+  const tags = normalizeTags(input.tags)
+
+  try {
+    // One outer transaction — Dexie reuses it for the createExpense
+    // calls made inside (their own db.transaction() calls request a
+    // subset of these same tables), so all slices commit atomically:
+    // either the whole receipt saves, or none of it does.
+    return await db.transaction(
+      'rw',
+      [db.transactions, db.ledgerEntries, db.accounts, db.categories, db.debitCards, db.creditCards],
+      async () => {
+        const results: Transaction[] = []
+        for (const line of input.splits) {
+          const shared = {
+            amount: line.amount,
+            date: input.date,
+            note: line.note?.trim() || input.note?.trim() || '',
+            tags,
+            categoryId: line.categoryId,
+          }
+          const transaction = input.accountId
+            ? await createExpense(
+                { accountId: input.accountId, debitCardId: input.debitCardId ?? null, ...shared },
+                splitGroupId
+              )
+            : await createExpense({ creditCardId: input.creditCardId as string, ...shared }, splitGroupId)
+          results.push(transaction)
+        }
+        return results
+      }
+    )
+  } catch (error) {
+    throw toAppDbError(error)
+  }
 }

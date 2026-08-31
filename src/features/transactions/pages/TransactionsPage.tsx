@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Plus, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight } from 'lucide-react'
 import { AppShell } from '@/layouts/AppShell'
 import { BottomNav } from '@/layouts/BottomNav'
@@ -10,9 +10,10 @@ import { TransactionRow } from '../components/TransactionRow'
 import { EmptyTransactionsState } from '../components/EmptyTransactionsState'
 import { SuccessToast } from '../components/SuccessToast'
 import { useTransactionsList, type TransactionListItem } from '../useTransactions'
-import { ConfirmationDialog, useToast } from '@/components/ui'
+import { ConfirmationDialog, useToast, SearchInput } from '@/components/ui'
 import { deleteTransaction } from '@/services/transactionService'
 import { CreditCardPaymentSheet } from '@/features/credit-cards/components/CreditCardPaymentSheet'
+import { cn } from '@/lib/cn'
 import type { Account, Category, Transaction } from '@/types/entities'
 
 type SavedFeedback =
@@ -37,6 +38,8 @@ export function TransactionsPage({ activeNav, onNavChange, onOpenMenu }: Transac
   const [editingItem, setEditingItem] = useState<TransactionListItem | null>(null)
   const [feedback, setFeedback] = useState<SavedFeedback | null>(null)
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense' | 'transfer'>('all')
 
   function handleEdit(item: TransactionListItem) {
     setEditingItem(item)
@@ -68,6 +71,31 @@ export function TransactionsPage({ activeNav, onNavChange, onOpenMenu }: Transac
     }
   }
 
+  const filteredItems = useMemo(() => {
+    if (!items) return items
+    const q = searchTerm.trim().toLowerCase()
+    return items.filter((item) => {
+      if (typeFilter !== 'all' && item.transaction.type !== typeFilter) return false
+      if (!q) return true
+      if (q.startsWith('#')) {
+        return (item.transaction.tags ?? []).some((t) => t.includes(q.slice(1)))
+      }
+      const haystack = [
+        item.transaction.note,
+        item.category?.name,
+        item.account?.name,
+        item.toAccount?.name,
+        item.creditCard?.name,
+        (item.transaction.tags ?? []).join(' '),
+        (item.transaction.amount / 100).toFixed(2),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(q)
+    })
+  }, [items, searchTerm, typeFilter])
+
   return (
     <AppShell
       title="Transactions"
@@ -94,16 +122,46 @@ export function TransactionsPage({ activeNav, onNavChange, onOpenMenu }: Transac
       )}
 
       {!isLoading && items && items.length > 0 && (
-        <div className="divide-y divide-border rounded-2xl bg-surface px-3">
-          {items.map((item) => (
-            <TransactionRow
-              key={item.transaction.id}
-              {...item}
-              onEdit={() => handleEdit(item)}
-              onDelete={() => setTransactionToDelete(item.transaction.id)}
+        <>
+          <div className="mb-3 flex flex-col gap-2">
+            <SearchInput
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onClear={() => setSearchTerm('')}
+              placeholder="Search notes, category, account, #tag…"
             />
-          ))}
-        </div>
+            <div className="flex gap-2 overflow-x-auto">
+              {(['all', 'expense', 'income', 'transfer'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTypeFilter(t)}
+                  className={cn(
+                    'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium capitalize',
+                    typeFilter === t ? 'bg-primary text-primary-foreground' : 'bg-surface-elevated text-muted-foreground'
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filteredItems && filteredItems.length === 0 ? (
+            <p className="px-1 py-6 text-center text-sm text-muted-foreground">No transactions match your search.</p>
+          ) : (
+            <div className="divide-y divide-border rounded-2xl bg-surface px-3">
+              {filteredItems!.map((item) => (
+                <TransactionRow
+                  key={item.transaction.id}
+                  {...item}
+                  onEdit={() => handleEdit(item)}
+                  onDelete={() => setTransactionToDelete(item.transaction.id)}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <BottomSheet open={addMenuOpen} onClose={() => setAddMenuOpen(false)} title="Add Transaction">

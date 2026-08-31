@@ -9,7 +9,7 @@ import type {
   Transaction,
   TransactionType,
   LedgerEntry,
-    Budget,
+  Budget,
   Loan,
   LoanStatus,
   LoanRepayment,
@@ -175,14 +175,14 @@ export const transactionRepository = {
   },
   // Newest-first list of transactions of a single type — used by the
   // transaction history screen, starting with expenses.
-    async getByType(type: TransactionType): Promise<Transaction[]> {
+  async getByType(type: TransactionType): Promise<Transaction[]> {
     try {
       return await db.transactions.where('type').equals(type).reverse().sortBy('date')
     } catch (error) {
       throw toAppDbError(error)
     }
   },
-    // Purchases made with a single credit card, newest first — powers the
+  // Purchases made with a single credit card, newest first — powers the
   // "Recent purchases" list on Credit Card Details.
   async getByCreditCard(creditCardId: string): Promise<Transaction[]> {
     try {
@@ -197,6 +197,15 @@ export const transactionRepository = {
   async getByDebitCard(debitCardId: string): Promise<Transaction[]> {
     try {
       return await db.transactions.where('debitCardId').equals(debitCardId).reverse().sortBy('date')
+    } catch (error) {
+      throw toAppDbError(error)
+    }
+  },
+  // Every slice of one split receipt, oldest-first — powers grouped
+  // display/edit of a split expense.
+  async getBySplitGroup(splitGroupId: string): Promise<Transaction[]> {
+    try {
+      return await db.transactions.where('splitGroupId').equals(splitGroupId).sortBy('date')
     } catch (error) {
       throw toAppDbError(error)
     }

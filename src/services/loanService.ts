@@ -195,6 +195,8 @@ export async function disburseLoan(input: DisburseLoanInput): Promise<Loan> {
               ? `Loan received from ${loan.counterpartyName}`
               : `Loan given to ${loan.counterpartyName}`,
           date: startDate,
+          tags: [],
+          splitGroupId: null,
           createdAt: now,
           updatedAt: now,
         }
@@ -325,6 +327,8 @@ export async function repayLoan(input: RepayLoanInput): Promise<LoanRepayment> {
               ? `Repayment to ${loan.counterpartyName}`
               : `Repayment received from ${loan.counterpartyName}`,
           date,
+          tags: [],
+          splitGroupId: null,
           createdAt: now,
           updatedAt: now,
         }

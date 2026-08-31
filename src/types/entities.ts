@@ -75,6 +75,8 @@ export interface Transaction {
   relatedEntityId: string | null // id in loans/dps/fdrs/creditCards when type is loan/dps/fdr/credit_card
   note: string
   date: number // epoch ms, user-set transaction date
+  tags: string[] // free-form labels (lowercased), e.g. ['cox\'s bazar trip', 'work-reimbursable']
+  splitGroupId: string | null // set when this row is one category-slice of a split expense; every slice of the same receipt shares this id
   createdAt: number
   updatedAt: number
 }

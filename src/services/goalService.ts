@@ -74,10 +74,12 @@ async function moveGoalMoney(direction: GoalMoneyDirection, input: MoveGoalMoney
           toAccountId: null,
           categoryId: null,
           creditCardId: null,
-          debitCardId: null,        // Added: goal contributions/withdrawals aren't debit-card transactions
+          debitCardId: null,        // Goal contributions/withdrawals aren't debit-card transactions
           relatedEntityId: goalId,
           note: note?.trim() || (direction === 'contribution' ? `Added to ${goal.name}` : `Withdrawn from ${goal.name}`),
           date: now,
+          tags: [],
+          splitGroupId: null,
           createdAt: now,
           updatedAt: now,
         }

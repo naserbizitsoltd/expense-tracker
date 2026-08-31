@@ -29,12 +29,14 @@ export interface TransactionInput {
   categoryId?: string | null // required for expense/income, forbidden for transfer
   date: number // epoch ms
   note?: string
+  tags?: string[] // free-form labels (lowercased), e.g. ['cox\'s bazar trip', 'work-reimbursable']
 }
 
 export interface ValidatedTransactionInput extends TransactionInput {
   toAccountId: string | null
   categoryId: string | null
   note: string
+  tags: string[] // normalized, lowercased, deduped
 }
 
 const CORE_TYPES: CoreTransactionType[] = ['expense', 'income', 'transfer']
@@ -90,6 +92,19 @@ export async function requireCategory(categoryId: string, expectedType: 'expense
   return category as Category
 }
 
+// Trims, lowercases, drops empties, dedupes — so the same tag typed
+// "Cox's Bazar" and "cox's bazar" is always one tag everywhere it's
+// used for filtering/search.
+export function normalizeTags(tags: string[] | undefined): string[] {
+  if (!tags) return []
+  const seen = new Set<string>()
+  for (const raw of tags) {
+    const t = raw.trim().toLowerCase()
+    if (t) seen.add(t)
+  }
+  return Array.from(seen)
+}
+
 /**
  * Validates a transaction input for create or edit and returns a
  * normalized version (nullable fields filled in, note defaulted).
@@ -112,6 +127,7 @@ export async function validateTransactionInput(
   }
 
   const note = input.note?.trim() ?? ''
+  const tags = normalizeTags(input.tags)
 
   if (input.type === 'transfer') {
     if (input.categoryId) {
@@ -127,6 +143,7 @@ export async function validateTransactionInput(
       toAccountId: destination.id,
       categoryId: null,
       note,
+      tags,
     }
   }
 
@@ -146,6 +163,7 @@ export async function validateTransactionInput(
     toAccountId: null,
     categoryId: input.categoryId,
     note,
+    tags,
   }
 }
 

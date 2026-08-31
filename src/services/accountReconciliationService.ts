@@ -122,6 +122,8 @@ export async function reconcileAccount(input: ReconcileAccountInput): Promise<Ac
             relatedEntityId: null,
             note: note || 'Balance reconciliation adjustment',
             date,
+            tags: [],
+            splitGroupId: null,
             createdAt: now,
             updatedAt: now,
           }
