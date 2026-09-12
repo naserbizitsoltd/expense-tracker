@@ -108,7 +108,8 @@ async function createTransaction(
   input: TransactionInput,
   relatedEntityId: string | null = null,
   debitCardId: string | null = null,
-  splitGroupId: string | null = null
+  splitGroupId: string | null = null,
+  splitDescription: string | null = null
 ): Promise<Transaction> {
   try {
     return await db.transaction('rw', db.transactions, db.ledgerEntries, db.accounts, db.categories, db.debitCards, async () => {
@@ -138,6 +139,7 @@ async function createTransaction(
         note: validated.note,
         tags: validated.tags,
         splitGroupId,
+        splitDescription,
         date: validated.date,
         createdAt: now,
         updatedAt: now,
@@ -167,10 +169,14 @@ async function createTransaction(
   }
 }
 
-export async function createExpense(input: CreateExpenseInput, splitGroupId: string | null = null): Promise<Transaction> {
+export async function createExpense(
+  input: CreateExpenseInput,
+  splitGroupId: string | null = null,
+  splitDescription: string | null = null
+): Promise<Transaction> {
   const { relatedEntityId = null, accountId, creditCardId, ...rest } = input
   if (creditCardId) {
-    return createCreditCardExpense({ ...rest, creditCardId }, relatedEntityId, splitGroupId)
+    return createCreditCardExpense({ ...rest, creditCardId }, relatedEntityId, splitGroupId, splitDescription)
   }
   const { debitCardId, ...core } = rest as typeof rest & { debitCardId?: string | null }
   return createTransaction(
@@ -178,7 +184,8 @@ export async function createExpense(input: CreateExpenseInput, splitGroupId: str
     { ...core, type: 'expense', accountId: accountId as string, toAccountId: null },
     relatedEntityId,
     debitCardId ?? null,
-    splitGroupId
+    splitGroupId,
+    splitDescription
   )
 }
 
@@ -193,7 +200,8 @@ export async function createExpense(input: CreateExpenseInput, splitGroupId: str
 async function createCreditCardExpense(
   input: Omit<TransactionInput, 'type' | 'toAccountId' | 'accountId'> & { creditCardId: string },
   relatedEntityId: string | null,
-  splitGroupId: string | null = null
+  splitGroupId: string | null = null,
+  splitDescription: string | null = null
 ): Promise<Transaction> {
   try {
     return await db.transaction('rw', db.transactions, db.creditCards, db.categories, async () => {
@@ -227,6 +235,7 @@ async function createCreditCardExpense(
         note: input.note?.trim() ?? '',
         tags: normalizeTags(input.tags),
         splitGroupId,
+        splitDescription,
         date: input.date,
         createdAt: now,
         updatedAt: now,
@@ -303,6 +312,7 @@ export async function createTransferWithCharge(
           note: validated.note,
           tags: validated.tags,
           splitGroupId: null,
+          splitDescription: null,
           date: validated.date,
           createdAt: now,
           updatedAt: now,
@@ -342,6 +352,7 @@ export async function createTransferWithCharge(
             note: chargeNote?.trim() || 'Transfer charge',
             tags: [],
             splitGroupId: null,
+            splitDescription: null,
             date: validated.date,
             createdAt: now,
             updatedAt: now,
@@ -416,6 +427,7 @@ export async function payCreditCardBill(input: CreditCardPaymentInput): Promise<
         note: input.note?.trim() ?? '',
         tags: [],
         splitGroupId: null,
+        splitDescription: null,
         date: input.date,
         createdAt: now,
         updatedAt: now,
@@ -844,21 +856,31 @@ export async function createSplitExpense(input: CreateSplitExpenseInput): Promis
       'rw',
       [db.transactions, db.ledgerEntries, db.accounts, db.categories, db.debitCards, db.creditCards],
       async () => {
+        const splitDescription = input.note?.trim() || ''
         const results: Transaction[] = []
         for (const line of input.splits) {
           const shared = {
             amount: line.amount,
             date: input.date,
-            note: line.note?.trim() || input.note?.trim() || '',
+            // Category-specific description for this slice only — no
+            // longer falls back to the central note, since that note is
+            // preserved separately below as `splitDescription` and shown
+            // as the group heading rather than being duplicated here.
+            note: line.note?.trim() || '',
             tags,
             categoryId: line.categoryId,
           }
           const transaction = input.accountId
             ? await createExpense(
                 { accountId: input.accountId, debitCardId: input.debitCardId ?? null, ...shared },
-                splitGroupId
+                splitGroupId,
+                splitDescription
               )
-            : await createExpense({ creditCardId: input.creditCardId as string, ...shared }, splitGroupId)
+            : await createExpense(
+                { creditCardId: input.creditCardId as string, ...shared },
+                splitGroupId,
+                splitDescription
+              )
           results.push(transaction)
         }
         return results

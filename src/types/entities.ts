@@ -77,6 +77,7 @@ export interface Transaction {
   date: number // epoch ms, user-set transaction date
   tags: string[] // free-form labels (lowercased), e.g. ['cox\'s bazar trip', 'work-reimbursable']
   splitGroupId: string | null // set when this row is one category-slice of a split expense; every slice of the same receipt shares this id
+  splitDescription: string | null // the shared/central description for the whole split group (e.g. "Agora grocery run"), duplicated onto every slice of that splitGroupId. `note` on each slice remains that slice's own category-specific description. Null/empty for non-split transactions.
   createdAt: number
   updatedAt: number
 }

@@ -19,7 +19,7 @@ import { Card, Badge, BalanceCard, BottomSheet, EmptyState, LoadingState } from 
 import { AccountListItem } from '@/features/accounts/components/AccountListItem'
 import { BudgetCard } from '@/features/budgets/components/BudgetCard'
 import { GoalCard } from '@/features/goals/components/GoalCard'
-import { TransactionRow } from '@/features/transactions/components/TransactionRow'
+import { TransactionRow, SplitTransactionGroupRow } from '@/features/transactions/components/TransactionRow'
 import { ExpenseFormSheet } from '@/features/transactions/components/ExpenseFormSheet'
 import { IncomeFormSheet } from '@/features/transactions/components/IncomeFormSheet'
 import { TransferFormSheet } from '@/features/transactions/components/TransferFormSheet'
@@ -307,9 +307,13 @@ export function DashboardPage({
             <EmptyState icon={<Receipt className="h-6 w-6" />} title="No transactions yet" description="Your latest activity will show up here." />
           )}
           <div className="flex flex-col divide-y divide-border/60">
-            {dashboard.recentTransactions.map((item) => (
-              <TransactionRow key={item.transaction.id} {...item} />
-            ))}
+            {dashboard.recentTransactions.map((item) =>
+              item.kind === 'split' ? (
+                <SplitTransactionGroupRow key={item.splitGroupId} group={item} />
+              ) : (
+                <TransactionRow key={item.transaction.id} {...item} />
+              )
+            )}
           </div>
         </section>
 

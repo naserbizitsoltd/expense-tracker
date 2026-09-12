@@ -197,6 +197,7 @@ export async function disburseLoan(input: DisburseLoanInput): Promise<Loan> {
           date: startDate,
           tags: [],
           splitGroupId: null,
+          splitDescription: null,
           createdAt: now,
           updatedAt: now,
         }
@@ -329,6 +330,7 @@ export async function repayLoan(input: RepayLoanInput): Promise<LoanRepayment> {
           date,
           tags: [],
           splitGroupId: null,
+          splitDescription: null,
           createdAt: now,
           updatedAt: now,
         }

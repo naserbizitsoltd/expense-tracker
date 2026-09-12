@@ -80,6 +80,7 @@ async function moveGoalMoney(direction: GoalMoneyDirection, input: MoveGoalMoney
           date: now,
           tags: [],
           splitGroupId: null,
+          splitDescription: null,
           createdAt: now,
           updatedAt: now,
         }

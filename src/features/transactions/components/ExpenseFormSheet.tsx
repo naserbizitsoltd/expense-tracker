@@ -29,10 +29,11 @@ interface SplitLine {
   id: string
   category: Category | null
   amountInput: string
+  note: string // this slice's own category-specific description, shown as a subheading under the group's shared description
 }
 
 function newSplitLine(): SplitLine {
-  return { id: crypto.randomUUID(), category: null, amountInput: '' }
+  return { id: crypto.randomUUID(), category: null, amountInput: '', note: '' }
 }
 
 const submitExpense = singleFlight(createExpense)
@@ -151,6 +152,7 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
         const splits = splitLines.map((l) => ({
           categoryId: l.category?.id ?? '',
           amount: parseAmountInput(l.amountInput, sourceCurrency) ?? 0,
+          note: l.note.trim(),
         }))
         if (splits.some((s) => !s.categoryId || s.amount <= 0)) {
           setSubmitError('Every split needs a category and an amount greater than zero.')
@@ -308,44 +310,56 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
           ) : (
             <div className="flex flex-col gap-2">
               {splitLines.map((line) => (
-                <div key={line.id} className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSplitCategorySheetForLine(line.id)}
-                    className="flex flex-1 items-center gap-2 rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-left"
-                  >
-                    {line.category ? (
-                      <>
-                        <CategoryIcon name={line.category.icon} size={14} color={line.category.color} />
-                        <span className="truncate text-sm text-foreground">{line.category.name}</span>
-                      </>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Category</span>
-                    )}
-                  </button>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={line.amountInput}
-                    onChange={(e) => {
-                      const v = e.target.value.replace(/[^\d.]/g, '')
-                      if (/^\d*\.?\d{0,2}$/.test(v)) {
-                        setSplitLines((rows) => rows.map((r) => (r.id === line.id ? { ...r, amountInput: v } : r)))
-                      }
-                    }}
-                    className="w-24 rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-right text-sm text-foreground outline-none"
-                  />
-                  {splitLines.length > 2 && (
+                <div key={line.id} className="flex flex-col gap-1.5 rounded-xl border border-border bg-surface-elevated/40 p-2">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      aria-label="Remove split line"
-                      onClick={() => setSplitLines((rows) => rows.filter((r) => r.id !== line.id))}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground"
+                      onClick={() => setSplitCategorySheetForLine(line.id)}
+                      className="flex flex-1 items-center gap-2 rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-left"
                     >
-                      <Trash2 size={16} />
+                      {line.category ? (
+                        <>
+                          <CategoryIcon name={line.category.icon} size={14} color={line.category.color} />
+                          <span className="truncate text-sm text-foreground">{line.category.name}</span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Category</span>
+                      )}
                     </button>
-                  )}
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={line.amountInput}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/[^\d.]/g, '')
+                        if (/^\d*\.?\d{0,2}$/.test(v)) {
+                          setSplitLines((rows) => rows.map((r) => (r.id === line.id ? { ...r, amountInput: v } : r)))
+                        }
+                      }}
+                      className="w-24 rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-right text-sm text-foreground outline-none"
+                    />
+                    {splitLines.length > 2 && (
+                      <button
+                        type="button"
+                        aria-label="Remove split line"
+                        onClick={() => setSplitLines((rows) => rows.filter((r) => r.id !== line.id))}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Description for this category (optional)"
+                    value={line.note}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setSplitLines((rows) => rows.map((r) => (r.id === line.id ? { ...r, note: v } : r)))
+                    }}
+                    className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/60"
+                  />
                 </div>
               ))}
               <button
@@ -436,13 +450,20 @@ export function ExpenseFormSheet({ open, editing, onClose, onSaved }: ExpenseFor
           </div>
 
           <div>
-            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">Description (optional)</label>
+            <label className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">
+              {isSplit ? 'Overall description (optional)' : 'Description (optional)'}
+            </label>
             <input
               type="text"
-              placeholder="e.g. Lunch with colleagues"
+              placeholder={isSplit ? 'e.g. Agora grocery run' : 'e.g. Lunch with colleagues'}
               {...register('description')}
               className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/60"
             />
+            {isSplit && (
+              <p className="mt-1 px-1 text-xs text-muted-foreground">
+                Shown as the heading for this receipt; each category above can have its own description too.
+              </p>
+            )}
           </div>
 
           <div>

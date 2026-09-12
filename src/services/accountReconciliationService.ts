@@ -124,6 +124,7 @@ export async function reconcileAccount(input: ReconcileAccountInput): Promise<Ac
             date,
             tags: [],
             splitGroupId: null,
+            splitDescription: null,
             createdAt: now,
             updatedAt: now,
           }

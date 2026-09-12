@@ -1,9 +1,9 @@
 import { format } from 'date-fns'
-import { ArrowLeftRight, CreditCard as CreditCardIcon, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeftRight, CreditCard as CreditCardIcon, Pencil, Trash2, SplitSquareVertical } from 'lucide-react'
 import { CategoryIcon } from '@/lib/lucideIcon'
 import { formatAmount } from '@/lib/money'
 import { cn } from '@/lib/cn'
-import type { TransactionListItem } from '../useTransactions'
+import type { SplitTransactionGroupItem, TransactionListItem } from '../useTransactions'
 
 interface TransactionRowProps extends TransactionListItem {
   onEdit?: () => void
@@ -138,6 +138,94 @@ export function TransactionRow({ transaction, category, account, toAccount, cred
       </span>
       <EditAction onEdit={onEdit} />
       <DeleteAction onDelete={onDelete} />
+    </div>
+  )
+}
+
+interface SplitTransactionGroupRowProps {
+  group: SplitTransactionGroupItem
+  /** Called with the specific category slice the person tapped edit/delete on. */
+  onEditSlice?: (item: TransactionListItem) => void
+  onDeleteSlice?: (item: TransactionListItem) => void
+}
+
+/**
+ * Renders one split receipt as a single grouped block: the shared
+ * receipt description is the heading, and each category slice is
+ * listed underneath with its own description as a subheading. Every
+ * slice is still an independently editable/deletable transaction.
+ */
+export function SplitTransactionGroupRow({ group, onEditSlice, onDeleteSlice }: SplitTransactionGroupRowProps) {
+  return (
+    <div className="flex flex-col gap-2 px-1 py-3">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-muted">
+          <SplitSquareVertical size={16} className="text-primary" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 truncate text-sm font-medium text-foreground">
+            <span className="truncate">{group.description || 'Split transaction'}</span>
+            <span className="shrink-0 rounded-full bg-surface-elevated px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+              Split
+            </span>
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {format(group.date, 'MMM d, h:mm a')} ·{' '}
+            {group.creditCard
+              ? `${group.creditCard.name} •••• ${group.creditCard.last4}`
+              : group.account?.name ?? 'Unknown account'}
+            {' · '}
+            {group.slices.length} categories
+          </p>
+        </div>
+        <span className="shrink-0 text-sm font-semibold text-danger">
+          -{formatAmount(group.totalAmount, group.currency)}
+        </span>
+      </div>
+
+      <div className="ml-[52px] flex flex-col gap-1.5 border-l border-border pl-3">
+        {group.slices.map((slice) => (
+          <div key={slice.transaction.id} className="flex items-center gap-2.5">
+            <span
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+              style={{ backgroundColor: `${slice.category?.color ?? '#666'}26` }}
+            >
+              <CategoryIcon name={slice.category?.icon ?? 'tag'} size={13} color={slice.category?.color ?? '#999'} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium text-foreground">
+                {slice.category?.name ?? 'Uncategorized'}
+              </p>
+              {slice.transaction.note && (
+                <p className="truncate text-[11px] text-muted-foreground">{slice.transaction.note}</p>
+              )}
+            </div>
+            <span className="shrink-0 text-xs font-medium text-foreground">
+              {formatAmount(slice.transaction.amount, slice.transaction.currency)}
+            </span>
+            {onEditSlice && (
+              <button
+                type="button"
+                aria-label="Edit category slice"
+                onClick={() => onEditSlice(slice)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors active:scale-90 hover:bg-surface-elevated hover:text-foreground"
+              >
+                <Pencil size={13} />
+              </button>
+            )}
+            {onDeleteSlice && (
+              <button
+                type="button"
+                aria-label="Delete category slice"
+                onClick={() => onDeleteSlice(slice)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors active:scale-90 hover:bg-surface-elevated hover:text-foreground"
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

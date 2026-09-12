@@ -703,6 +703,29 @@ export class AppDatabase extends Dexie {
           updatedAt: Date.now(),
         })
       })
+
+    // v24 — Split expense descriptions. Adds `splitDescription`, the
+    // shared/central description for a split group (shown as the list
+    // heading), kept separate from each slice's own `note` (shown as
+    // that slice's category-wise subheading). No index needed — it's
+    // never queried by, only displayed alongside splitGroupId.
+    // Existing rows (all pre-dating this field) backfill to null.
+    this.version(24)
+      .stores({})
+      .upgrade(async (tx) => {
+        await tx
+          .table('transactions')
+          .toCollection()
+          .modify((t: Omit<Transaction, 'splitDescription'> & { splitDescription?: string | null }) => {
+            if (t.splitDescription === undefined) t.splitDescription = null
+          })
+
+        await tx.table<DbMetadata, string>('metadata').update(DB_METADATA_ID, {
+          schemaVersion: 24,
+          lastMigrationAt: Date.now(),
+          updatedAt: Date.now(),
+        })
+      })
   }
 }
 export const db = new AppDatabase()

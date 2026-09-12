@@ -6,7 +6,7 @@ import { BottomSheet } from '../components/BottomSheet'
 import { ExpenseFormSheet } from '../components/ExpenseFormSheet'
 import { IncomeFormSheet } from '../components/IncomeFormSheet'
 import { TransferFormSheet } from '../components/TransferFormSheet'
-import { TransactionRow } from '../components/TransactionRow'
+import { TransactionRow, SplitTransactionGroupRow } from '../components/TransactionRow'
 import { EmptyTransactionsState } from '../components/EmptyTransactionsState'
 import { SuccessToast } from '../components/SuccessToast'
 import { useTransactionsList, type TransactionListItem } from '../useTransactions'
@@ -75,8 +75,32 @@ export function TransactionsPage({ activeNav, onNavChange, onOpenMenu }: Transac
     if (!items) return items
     const q = searchTerm.trim().toLowerCase()
     return items.filter((item) => {
-      if (typeFilter !== 'all' && item.transaction.type !== typeFilter) return false
+      // A split group is always a set of expense slices, so it only
+      // ever matches the 'expense' or 'all' filter.
+      if (typeFilter !== 'all') {
+        if (item.kind === 'split') {
+          if (typeFilter !== 'expense') return false
+        } else if (item.transaction.type !== typeFilter) {
+          return false
+        }
+      }
       if (!q) return true
+
+      if (item.kind === 'split') {
+        if (q.startsWith('#')) return false // split slices don't carry their own tags today
+        const haystack = [
+          item.description,
+          ...item.slices.flatMap((s) => [s.transaction.note, s.category?.name]),
+          item.account?.name,
+          item.creditCard?.name,
+          (item.totalAmount / 100).toFixed(2),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+        return haystack.includes(q)
+      }
+
       if (q.startsWith('#')) {
         return (item.transaction.tags ?? []).some((t) => t.includes(q.slice(1)))
       }
@@ -151,14 +175,23 @@ export function TransactionsPage({ activeNav, onNavChange, onOpenMenu }: Transac
             <p className="px-1 py-6 text-center text-sm text-muted-foreground">No transactions match your search.</p>
           ) : (
             <div className="divide-y divide-border rounded-2xl bg-surface px-3">
-              {filteredItems!.map((item) => (
-                <TransactionRow
-                  key={item.transaction.id}
-                  {...item}
-                  onEdit={() => handleEdit(item)}
-                  onDelete={() => setTransactionToDelete(item.transaction.id)}
-                />
-              ))}
+              {filteredItems!.map((item) =>
+                item.kind === 'split' ? (
+                  <SplitTransactionGroupRow
+                    key={item.splitGroupId}
+                    group={item}
+                    onEditSlice={(slice) => handleEdit(slice)}
+                    onDeleteSlice={(slice) => setTransactionToDelete(slice.transaction.id)}
+                  />
+                ) : (
+                  <TransactionRow
+                    key={item.transaction.id}
+                    {...item}
+                    onEdit={() => handleEdit(item)}
+                    onDelete={() => setTransactionToDelete(item.transaction.id)}
+                  />
+                )
+              )}
             </div>
           )}
         </>

@@ -215,6 +215,7 @@ export async function contributeToDps(input: ContributeToDpsInput): Promise<DpsC
           date,
           tags: [],
           splitGroupId: null,
+          splitDescription: null,
           createdAt: now,
           updatedAt: now,
         }
@@ -386,6 +387,7 @@ export async function receiveDpsMaturity(input: ReceiveDpsMaturityInput): Promis
           date,
           tags: [],
           splitGroupId: null,
+          splitDescription: null,
           createdAt: now,
           updatedAt: now,
         }

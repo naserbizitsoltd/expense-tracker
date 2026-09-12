@@ -103,6 +103,7 @@ export async function createFdr(input: CreateFdrInput): Promise<Fdr> {
         date: startDate,
         tags: [],
         splitGroupId: null,
+        splitDescription: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -249,6 +250,7 @@ export async function receiveFdrMaturity(input: ReceiveFdrMaturityInput): Promis
         date,
         tags: [],
         splitGroupId: null,
+        splitDescription: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -393,6 +395,7 @@ export async function renewFdr(input: RenewFdrInput): Promise<RenewFdrResult> {
         date: now,
         tags: [],
         splitGroupId: null,
+        splitDescription: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -426,6 +429,7 @@ export async function renewFdr(input: RenewFdrInput): Promise<RenewFdrResult> {
         date: newFdr.startDate,
         tags: [],
         splitGroupId: null,
+        splitDescription: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -562,6 +566,7 @@ export async function withdrawFdrPrematurely(input: PrematureWithdrawFdrInput): 
         date,
         tags: [],
         splitGroupId: null,
+        splitDescription: null,
         createdAt: now,
         updatedAt: now,
       }
