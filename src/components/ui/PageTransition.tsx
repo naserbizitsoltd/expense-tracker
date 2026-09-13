@@ -65,9 +65,12 @@ export function PageTransition({ screenKey, kind = 'tab', className, children }:
   }
 
   const v = enterVariants[kind]
+  const isTransitioning = ghost !== null
 
   return (
-    <div className={className ? `relative ${className}` : 'relative'}>
+    <div
+      className={[className, 'relative', isTransitioning && 'transition-active'].filter(Boolean).join(' ')}
+    >
       {ghost && (
         <div className="absolute inset-0 z-0" aria-hidden="true">
           {ghost.node}
@@ -79,6 +82,7 @@ export function PageTransition({ screenKey, kind = 'tab', className, children }:
         animate={v.animate}
         onAnimationComplete={() => setGhost(null)}
         className="relative z-10"
+        style={{ willChange: isTransitioning ? 'transform, opacity' : undefined }}
       >
         {current.node}
       </motion.div>

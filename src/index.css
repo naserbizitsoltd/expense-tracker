@@ -124,6 +124,19 @@ body {
   -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
 
+/* While a page swap animation is running, a frosted header can be present
+   twice at once (outgoing ghost + incoming screen). Re-blurring a 20px
+   gaussian every animation frame — twice — is one of the most expensive
+   things a mobile GPU can be asked to do, and is the main cause of choppy
+   page transitions. Swap to a cheap solid fill for the transition's brief
+   lifetime; it's visually indistinguishable at that duration and removes
+   the per-frame blur recompute entirely. */
+.transition-active .glass-surface {
+  background: var(--surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 .gradient-hero {
   background-image: var(--gradient-hero);
 }
