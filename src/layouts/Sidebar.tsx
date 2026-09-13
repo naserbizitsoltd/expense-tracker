@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Tags, ChevronRight, ChevronLeft, Repeat, PiggyBank, Target, CreditCard,
   Landmark, HandCoins, Wallet2, Lock, Layers, Bell, X, Scale, ArrowLeftRight, CalendarRange, CalendarDays,
@@ -50,11 +50,31 @@ const ITEMS = (props: SidebarProps) => [
 export function Sidebar(props: SidebarProps) {
   const { open, onClose } = props
   const [collapsed, setCollapsed] = useState(false)
+  // While the drawer is opening or closing, its panel is a full-height
+  // `glass-surface` (20px blur) sliding via transform. Re-blurring that
+  // every frame while it's also moving — and while the page underneath is
+  // running its own swap animation — is the main source of "sidebar
+  // navigation feels laggy". Drop to a plain solid fill for the brief
+  // window the panel is actually in motion, same trick as the page
+  // transitions, then restore the frosted look once it's settled.
+  const [isAnimating, setIsAnimating] = useState(false)
 
   function handleSelect(action: () => void) {
+    setIsAnimating(true)
     onClose()
     action()
   }
+
+  function handleClose() {
+    setIsAnimating(true)
+    onClose()
+  }
+
+  // Also cover the opening animation, not just closing — the panel is
+  // just as much in motion (and just as expensive to blur) sliding in.
+  useEffect(() => {
+    setIsAnimating(true)
+  }, [open])
 
   return (
     <AnimatePresence>
@@ -63,12 +83,12 @@ export function Sidebar(props: SidebarProps) {
           {/* backdrop */}
           <motion.div
             key="sidebar-backdrop"
-            onClick={onClose}
+            onClick={handleClose}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]"
+            className="fixed inset-0 z-40 bg-black/60"
           />
 
           {/* panel */}
@@ -77,10 +97,12 @@ export function Sidebar(props: SidebarProps) {
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
-            transition={{ type: 'spring', stiffness: 380, damping: 38 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            onAnimationComplete={() => setIsAnimating(false)}
             className={cn(
               'safe-top safe-bottom glass-surface elevated-shadow fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border',
-              collapsed ? 'w-[76px]' : 'w-[268px]'
+              collapsed ? 'w-[76px]' : 'w-[268px]',
+              isAnimating && 'transition-active'
             )}
           >
             <div className="flex items-center justify-between px-4 pt-4">
@@ -96,7 +118,7 @@ export function Sidebar(props: SidebarProps) {
                   {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                 </button>
                 <button
-                  onClick={onClose}
+                  onClick={handleClose}
                   aria-label="Close menu"
                   className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface-elevated md:hidden"
                 >

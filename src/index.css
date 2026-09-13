@@ -89,12 +89,29 @@
 
 html, body, #root {
   height: 100%;
+  /* vh first as a fallback for browsers/webviews that don't support dvh —
+     if dvh is unsupported the whole declaration is dropped as invalid,
+     so this line stays in effect; if it IS supported, the later dvh
+     declaration wins because it comes second in the cascade. */
+  min-height: 100vh;
+  min-height: 100dvh;
+  /* This is the actual fix for the white gap: every previous attempt only
+     adjusted the HEIGHT of these elements, but none of them had a
+     background-color of their own. Whenever the real rendered height came
+     out even slightly shorter than the viewport (dvh rounding, unsupported
+     dvh in an older PWA webview, or an inner "min-h-dvh" flex child not
+     actually stretching), the browser's default white canvas showed
+     through underneath — regardless of how the height rule was written. */
+  background: var(--background);
 }
 
 body {
   -webkit-tap-highlight-color: transparent;
   font-feature-settings: "cv11", "ss01";
   letter-spacing: -0.011em;
+  /* Stops the white "rubber-band" bounce some mobile/PWA webviews show
+     when you overscroll past the top/bottom edge of the page. */
+  overscroll-behavior-y: none;
 }
 
 .safe-top {

@@ -26,7 +26,7 @@ export function AppShell({
   className 
 }: AppShellProps) {
   return (
-    <div className="gradient-mesh relative flex min-h-screen flex-col bg-background text-foreground">
+    <div className="gradient-mesh relative flex min-h-dvh flex-col bg-background text-foreground">
       <header className="safe-top glass-surface sticky top-0 z-30 border-b border-border/70">
         <div className="mx-auto flex h-16 max-w-md items-center gap-3 px-4">
           {!headerBack && headerMenu && (

@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
@@ -11,8 +12,16 @@ interface BottomSheetProps {
 }
 
 // Self-contained modern bottom sheet: dark backdrop, slide-up panel,
-// rounded top corners, safe-area aware. No portal dependency, so it
-// works regardless of your app's root DOM structure.
+// rounded top corners, safe-area aware.
+//
+// Rendered via a portal straight onto document.body — not nested inside
+// the page tree. `position: fixed` only anchors to the real viewport if
+// NO ancestor has a CSS transform (or will-change: transform) applied; if
+// one does, `fixed` silently re-anchors to that ancestor's box instead.
+// Our page-swap animations apply a transform to every page's wrapper, so
+// without the portal this sheet would render scoped to that wrapper and
+// end up sitting behind the bottom nav / FAB instead of covering the
+// whole screen.
 export function BottomSheet({ open, onClose, title, children, fullScreen }: BottomSheetProps) {
   useEffect(() => {
     if (!open) return
@@ -24,7 +33,7 @@ export function BottomSheet({ open, onClose, title, children, fullScreen }: Bott
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
       <button
         aria-label="Close"
@@ -51,6 +60,7 @@ export function BottomSheet({ open, onClose, title, children, fullScreen }: Bott
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
