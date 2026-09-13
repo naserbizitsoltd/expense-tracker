@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from 'react'
 import { type LucideIcon, PieChart } from 'lucide-react'
-import { AnimatePresence } from 'framer-motion'
 import { ToastProvider, EmptyState, PageTransition, type PageTransitionKind } from '@/components/ui'
 import { PwaStatusLayer } from '@/components/pwa/PwaStatusLayer'
 import { AppShell } from '@/layouts/AppShell'
@@ -218,11 +217,11 @@ function AppContent() {
 
   return (
     <>
-      <AnimatePresence mode="wait" initial={false}>
+      <div className="relative">
         <PageTransition key={key} kind={kind}>
           {node}
         </PageTransition>
-      </AnimatePresence>
+      </div>
       {sidebar}
     </>
   )
