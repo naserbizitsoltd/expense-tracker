@@ -9,9 +9,9 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 
 const variantStyles: Record<BadgeVariant, string> = {
   default: 'bg-surface-elevated text-foreground border border-border',
-  success: 'bg-success/10 text-success border border-success/20',
-  danger: 'bg-danger/10 text-danger border border-danger/20',
-  warning: 'bg-warning/10 text-warning border border-warning/20',
+  success: 'bg-success/12 text-success border border-success/25',
+  danger: 'bg-danger/12 text-danger border border-danger/25',
+  warning: 'bg-warning/12 text-warning border border-warning/25',
 }
 
 export function Badge({ className, variant = 'default', ...props }: BadgeProps) {

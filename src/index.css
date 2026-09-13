@@ -6,12 +6,15 @@
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
+  --color-glass: var(--glass);
   --color-border: var(--border);
   --color-foreground: var(--foreground);
   --color-muted-foreground: var(--muted-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-muted: var(--primary-muted);
+  --color-accent: var(--accent);
+  --color-accent-muted: var(--accent-muted);
   --color-danger: var(--danger);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -23,40 +26,65 @@
   --radius-xl: 0.625rem;
   --radius-2xl: 0.75rem;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.24), 0 1px 1px rgba(0, 0, 0, 0.12);
-  --shadow-elevated: 0 12px 28px rgba(0, 0, 0, 0.36);
+  --shadow-card: var(--shadow-card-val);
+  --shadow-elevated: var(--shadow-elevated-val);
+  --shadow-glow: var(--shadow-glow-val);
 }
 
 :root {
-  --background: #0c0c0f;        /* dim charcoal, not pure black */
-  --surface: #1c1c22;           /* clearly lighter — cards visibly lift off bg */
-  --surface-elevated: #26262e;  /* one more step up, for nested/active elements */
-  --border: #333340;            /* visible edge without being harsh */
-  --foreground: #f5f5f7;
-  --muted-foreground: #9797a3;
-  --primary: #5046e5;
+  /* Premium dark — near-black with a faint blue-violet cast, not flat grey */
+  --background: #08080c;
+  --surface: #131318;
+  --surface-elevated: #1d1d25;
+  --glass: rgba(255, 255, 255, 0.045);
+  --border: rgba(255, 255, 255, 0.09);
+  --foreground: #f7f7fa;
+  --muted-foreground: #93939f;
+  --primary: #6c5ce7;
   --primary-foreground: #ffffff;
-  --primary-muted: #201d3d;
-  --danger: #f43f5e;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --info: #38bdf8;
+  --primary-muted: #201c3d;
+  --accent: #22d3ee;
+  --accent-muted: #0f2e34;
+  --danger: #fb4570;
+  --success: #2ee6a6;
+  --warning: #f7b955;
+  --info: #22d3ee;
+
+  --gradient-hero: linear-gradient(135deg, #6c5ce7 0%, #8b5cf6 45%, #22d3ee 100%);
+  --gradient-mesh: radial-gradient(120% 140% at 0% 0%, rgba(108, 92, 231, 0.55) 0%, transparent 55%),
+    radial-gradient(120% 140% at 100% 0%, rgba(34, 211, 238, 0.35) 0%, transparent 55%);
+
+  --shadow-card-val: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px -12px rgba(0, 0, 0, 0.5);
+  --shadow-elevated-val: 0 24px 48px -12px rgba(0, 0, 0, 0.55), 0 4px 12px -4px rgba(0, 0, 0, 0.4);
+  --shadow-glow-val: 0 12px 32px -8px rgba(108, 92, 231, 0.45);
 }
 
 .light {
-  --background: #ffffff;      /* pure white page background */
-  --surface: #eef0f2;          /* soft cool grey — clean elevated-neutral, no yellow tint */
-  --surface-elevated: #e2e5e9; /* one step deeper for nested/active elements */
-  --border: #d3d7dc;           /* matching cool neutral border */          /* warm neutral border to match */
-  --foreground: #14151c;
-  --muted-foreground: #666a7a;
-  --primary: #5046e5;
+  /* Premium light — warm ivory canvas, not stark white; soft long shadows */
+  --background: #f6f5f8;
+  --surface: #ffffff;
+  --surface-elevated: #f1eff6;
+  --glass: rgba(255, 255, 255, 0.6);
+  --border: rgba(20, 20, 35, 0.08);
+  --foreground: #16151d;
+  --muted-foreground: #6f6d7d;
+  --primary: #6c5ce7;
   --primary-foreground: #ffffff;
-  --primary-muted: #e0ddfb;
-  --danger: #e11d48;
-  --success: #16a34a;
+  --primary-muted: #ebe7fc;
+  --accent: #0891b2;
+  --accent-muted: #e0f7fb;
+  --danger: #e11d5e;
+  --success: #0e9f6e;
   --warning: #d97706;
-  --info: #0284c7;
+  --info: #0891b2;
+
+  --gradient-hero: linear-gradient(135deg, #6c5ce7 0%, #8b5cf6 45%, #22b8cf 100%);
+  --gradient-mesh: radial-gradient(120% 140% at 0% 0%, rgba(108, 92, 231, 0.16) 0%, transparent 55%),
+    radial-gradient(120% 140% at 100% 0%, rgba(8, 145, 178, 0.12) 0%, transparent 55%);
+
+  --shadow-card-val: 0 1px 2px rgba(20, 20, 35, 0.04), 0 8px 20px -14px rgba(20, 20, 35, 0.15);
+  --shadow-elevated-val: 0 24px 48px -16px rgba(20, 20, 35, 0.22), 0 4px 12px -6px rgba(20, 20, 35, 0.1);
+  --shadow-glow-val: 0 12px 32px -10px rgba(108, 92, 231, 0.35);
 }
 
 html, body, #root {
@@ -85,6 +113,42 @@ body {
   box-shadow: var(--shadow-elevated);
 }
 
+.glow-shadow {
+  box-shadow: var(--shadow-glow);
+}
+
+/* Glass surface — frosted panel used for the header, nav, and hero card overlays */
+.glass-surface {
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+.gradient-hero {
+  background-image: var(--gradient-hero);
+}
+
+.gradient-mesh {
+  background-image: var(--gradient-mesh);
+}
+
+/* Fine noise texture laid over gradients so they read as premium/tactile
+   rather than flat digital gradients. Applied via ::before in components. */
+.grain-overlay {
+  position: relative;
+  isolation: isolate;
+}
+.grain-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
 @keyframes slide-up {
   from { transform: translateY(100%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
@@ -100,6 +164,22 @@ body {
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
 .animate-slide-up { animation: slide-up 0.24s cubic-bezier(0.32, 0.72, 0, 1); }
 .animate-fade-in { animation: fade-in 0.15s ease-out; }
 .animate-scale-in { animation: scale-in 0.15s ease-out; }
+
+.animate-shimmer {
+  background-image: linear-gradient(90deg, var(--surface-elevated) 0%, var(--border) 50%, var(--surface-elevated) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}

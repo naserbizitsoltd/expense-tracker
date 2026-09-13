@@ -38,15 +38,17 @@ export function CategorySelectSheet({
               onSelect(category)
               onClose()
             }}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-surface-elevated px-3 py-4 text-center active:scale-95 transition-transform"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-surface-elevated px-2 py-4 text-center active:scale-95 transition-transform"
           >
             <span
-              className="flex h-11 w-11 items-center justify-center rounded-full"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
               style={{ backgroundColor: `${category.color}26` }}
             >
               <CategoryIcon name={category.icon} size={20} color={category.color} />
             </span>
-            <span className="line-clamp-1 text-xs font-medium text-foreground">{category.name}</span>
+            <span className="line-clamp-2 break-words text-xs font-medium leading-snug text-foreground">
+              {category.name}
+            </span>
           </button>
         ))}
       </div>

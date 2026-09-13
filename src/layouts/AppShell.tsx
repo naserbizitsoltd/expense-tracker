@@ -26,8 +26,8 @@ export function AppShell({
   className 
 }: AppShellProps) {
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="safe-top sticky top-0 z-30 border-b border-border/70 bg-background/85 backdrop-blur-lg">
+    <div className="gradient-mesh relative flex min-h-screen flex-col bg-background text-foreground">
+      <header className="safe-top glass-surface sticky top-0 z-30 border-b border-border/70">
         <div className="mx-auto flex h-16 max-w-md items-center gap-3 px-4">
           {!headerBack && headerMenu && (
             <button
@@ -55,7 +55,9 @@ export function AppShell({
         </div>
       </header>
 
-      <main className={cn('mx-auto w-full max-w-md flex-1 px-4 pb-8 pt-5', bottomNav && 'pb-28', className)}>{children}</main>
+      <main className={cn('relative z-[1] mx-auto w-full max-w-md flex-1 px-4 pb-8 pt-5', bottomNav && 'pb-28', className)}>
+        {children}
+      </main>
 
       {fab && <div className="safe-bottom fixed bottom-24 right-4 z-40 mx-auto max-w-md">{fab}</div>}
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -393,12 +394,13 @@ export function DashboardPage({
 
 function QuickAction({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
-    <button
+    <motion.button
+      whileTap={{ scale: 0.94 }}
       onClick={onClick}
-      className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 text-xs font-semibold text-foreground transition-colors active:bg-surface-elevated"
+      className="card-shadow flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/30 hover:bg-surface-elevated"
     >
       {icon}
       {label}
-    </button>
+    </motion.button>
   )
 }

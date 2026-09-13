@@ -13,11 +13,13 @@ const paddingStyles: Record<CardPadding, string> = {
   md: 'p-4',
 }
 
-export function Card({ className, padding = 'md', ...props }: CardProps) {
+export function Card({ className, padding = 'md', onClick, ...props }: CardProps) {
   return (
     <div
+      onClick={onClick}
       className={cn(
-        'card-shadow rounded-xl border border-border bg-surface transition-shadow duration-200',
+        'card-shadow rounded-xl border border-border bg-surface transition-all duration-200',
+        onClick && 'cursor-pointer active:scale-[0.985] hover:border-border hover:shadow-[var(--shadow-elevated)]',
         paddingStyles[padding],
         className
       )}
