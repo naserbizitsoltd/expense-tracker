@@ -218,7 +218,7 @@ function AppContent() {
   return (
     <>
       <div className="relative">
-        <PageTransition key={key} kind={kind}>
+        <PageTransition screenKey={key} kind={kind}>
           {node}
         </PageTransition>
       </div>
