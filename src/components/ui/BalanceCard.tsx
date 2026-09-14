@@ -39,9 +39,16 @@ export function BalanceCard({ label, amount, trend, className }: BalanceCardProp
       </div>
 
       <div className="relative z-[2] mt-3 h-[2.4rem] overflow-hidden">
+        {/* Key on `hidden` only, not on `amount`. Keying on the amount
+           string meant every recalculation (DPS/loan totals often update
+           a couple of times in a row while data streams in) retriggered
+           an exit+enter cycle, and if the value changed again before that
+           cycle finished, AnimatePresence could end up with nothing
+           mounted — a blank card. Keying on `hidden` keeps the show/hide
+           cross-fade but lets the number itself just update in place. */}
         <AnimatePresence mode="wait" initial={false}>
           <motion.p
-            key={hidden ? 'hidden' : amount}
+            key={hidden ? 'hidden' : 'value'}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}

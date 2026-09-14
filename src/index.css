@@ -141,6 +141,19 @@ body {
   -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
 
+/* If backdrop-filter isn't supported (some Android PWA/WebViews silently
+   drop it), .glass-surface falls back to its near-transparent --glass
+   background with no blur behind it — which is what was letting the
+   Home page/page content show straight through the sidebar and the
+   sticky header. Detect that case and swap to a solid, fully opaque
+   background instead so the panel is always readable regardless of
+   backdrop-filter support. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-surface {
+    background: var(--surface);
+  }
+}
+
 /* While a page swap animation is running, a frosted header can be present
    twice at once (outgoing ghost + incoming screen). Re-blurring a 20px
    gaussian every animation frame — twice — is one of the most expensive
@@ -156,6 +169,29 @@ body {
 
 .gradient-hero {
   background-image: var(--gradient-hero);
+}
+
+/* Bottom sheet open transition — opacity + transform only (both run on
+   the GPU compositor, no layout/paint cost per frame), no backdrop-filter
+   involved. This replaced a `backdrop-blur-sm` + `animate-in fade-in`
+   combo where the animate-in classes came from a Tailwind plugin that
+   isn't installed in this project (so they did nothing) while the blur
+   still cost a full-screen backdrop-filter recompute on open — the
+   category picker's main source of lag. */
+@keyframes sheet-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.sheet-backdrop-in {
+  animation: sheet-backdrop-in 160ms ease-out both;
+}
+
+@keyframes sheet-panel-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.sheet-panel-in {
+  animation: sheet-panel-in 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .gradient-mesh {

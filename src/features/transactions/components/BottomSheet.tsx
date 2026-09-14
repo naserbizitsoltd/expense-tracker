@@ -38,11 +38,11 @@ export function BottomSheet({ open, onClose, title, children, fullScreen }: Bott
       <button
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in"
+        className="sheet-backdrop-in absolute inset-0 bg-black/60"
       />
       <div
         className={cn(
-          'relative flex flex-col bg-surface-elevated shadow-2xl',
+          'sheet-panel-in relative flex flex-col bg-surface-elevated shadow-2xl',
           fullScreen ? 'h-[100dvh] rounded-none' : 'max-h-[90dvh] rounded-t-2xl'
         )}
       >
