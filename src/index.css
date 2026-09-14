@@ -36,7 +36,7 @@
   --background: #08080c;
   --surface: #131318;
   --surface-elevated: #1d1d25;
-  --glass: rgba(255, 255, 255, 0.045);
+  --glass: rgba(19, 19, 24, 0.94);
   --border: rgba(255, 255, 255, 0.09);
   --foreground: #f7f7fa;
   --muted-foreground: #93939f;
@@ -64,7 +64,7 @@
   --background: #f6f5f8;
   --surface: #ffffff;
   --surface-elevated: #f1eff6;
-  --glass: rgba(255, 255, 255, 0.6);
+  --glass: rgba(255, 255, 255, 0.94);
   --border: rgba(20, 20, 35, 0.08);
   --foreground: #16151d;
   --muted-foreground: #6f6d7d;
@@ -134,24 +134,18 @@ body {
   box-shadow: var(--shadow-glow);
 }
 
-/* Glass surface — frosted panel used for the header, nav, and hero card overlays */
+/* Glass surface — frosted panel used for the header, nav, and hero card overlays.
+   The background itself is a near-opaque tint of --surface (not a light
+   translucent wash) so the panel is fully readable even when
+   backdrop-filter doesn't actually render — some Android PWA WebViews
+   report support for it via CSS.supports() but don't composite it
+   correctly, so a feature-detection fallback isn't reliable here. Where
+   blur DOES work it still adds a subtle frost on top; where it doesn't,
+   the panel is simply solid instead of see-through. */
 .glass-surface {
   background: var(--glass);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
-}
-
-/* If backdrop-filter isn't supported (some Android PWA/WebViews silently
-   drop it), .glass-surface falls back to its near-transparent --glass
-   background with no blur behind it — which is what was letting the
-   Home page/page content show straight through the sidebar and the
-   sticky header. Detect that case and swap to a solid, fully opaque
-   background instead so the panel is always readable regardless of
-   backdrop-filter support. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass-surface {
-    background: var(--surface);
-  }
 }
 
 /* While a page swap animation is running, a frosted header can be present

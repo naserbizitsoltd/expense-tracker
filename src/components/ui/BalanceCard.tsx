@@ -38,14 +38,18 @@ export function BalanceCard({ label, amount, trend, className }: BalanceCardProp
         </button>
       </div>
 
-      <div className="relative z-[2] mt-3 h-[2.4rem] overflow-hidden">
-        {/* Key on `hidden` only, not on `amount`. Keying on the amount
-           string meant every recalculation (DPS/loan totals often update
-           a couple of times in a row while data streams in) retriggered
-           an exit+enter cycle, and if the value changed again before that
-           cycle finished, AnimatePresence could end up with nothing
-           mounted — a blank card. Keying on `hidden` keeps the show/hide
-           cross-fade but lets the number itself just update in place. */}
+      <div className="relative z-[2] mt-3 min-h-[2.4rem] overflow-visible">
+        {/* Key on `hidden` only, not on `amount` (recalculating totals used
+           to retrigger the cross-fade and could leave nothing mounted).
+           `clamp()` replaces a fixed 2.1rem size: in a half-width card
+           (Loans/DPS use two side by side) a longer formatted amount like
+           "৳ 26,314.84" doesn't fit on one line at 2.1rem, wraps to a
+           second line, and the old fixed-height `overflow-hidden` wrapper
+           sliced that second line down to a sliver — which is the
+           "dashes under the ৳ symbol" bug. `min-h` + `overflow-visible`
+           mean that even if a value is still too long to fit on one line
+           after the clamp, it wraps and stays fully visible instead of
+           being clipped. */}
         <AnimatePresence mode="wait" initial={false}>
           <motion.p
             key={hidden ? 'hidden' : 'value'}
@@ -53,7 +57,7 @@ export function BalanceCard({ label, amount, trend, className }: BalanceCardProp
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="text-[2.1rem] font-bold leading-none tracking-tight tabular-nums text-white"
+            className="text-[clamp(1.15rem,6vw,2.1rem)] font-bold leading-tight tracking-tight tabular-nums text-white"
           >
             {hidden ? '••••••' : amount}
           </motion.p>
