@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { useKeyboardInset } from '@/hooks/useKeyboardInset'
 
 interface BottomSheetProps {
   open: boolean
@@ -22,7 +23,13 @@ interface BottomSheetProps {
 // without the portal this sheet would render scoped to that wrapper and
 // end up sitting behind the bottom nav / FAB instead of covering the
 // whole screen.
+//
+// The keyboard inset below reserves space at the bottom whenever the
+// on-screen keyboard is up, so a sheet containing a text field (search,
+// notes, amount) shrinks instead of being covered by the keys.
 export function BottomSheet({ open, onClose, title, children, fullScreen }: BottomSheetProps) {
+  const keyboardInset = useKeyboardInset(open)
+
   useEffect(() => {
     if (!open) return
     document.body.style.overflow = 'hidden'
@@ -34,7 +41,10 @@ export function BottomSheet({ open, onClose, title, children, fullScreen }: Bott
   if (!open) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end"
+      style={{ paddingBottom: keyboardInset || undefined }}
+    >
       <button
         aria-label="Close"
         onClick={onClose}
@@ -42,11 +52,11 @@ export function BottomSheet({ open, onClose, title, children, fullScreen }: Bott
       />
       <div
         className={cn(
-          'sheet-panel-in relative flex flex-col bg-surface-elevated shadow-2xl',
-          fullScreen ? 'h-[100dvh] rounded-none' : 'max-h-[90dvh] rounded-t-2xl'
+          'sheet-panel-in relative flex min-h-0 flex-col bg-surface-elevated shadow-2xl',
+          fullScreen ? 'h-full rounded-none' : 'max-h-[90%] rounded-t-2xl'
         )}
       >
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
           <h2 className="text-lg font-semibold text-foreground">{title}</h2>
           <button
             onClick={onClose}
@@ -56,7 +66,16 @@ export function BottomSheet({ open, onClose, title, children, fullScreen }: Bott
             <X size={18} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4">
+        <div
+          className="flex-1 overflow-y-auto overscroll-contain px-5 pt-4"
+          style={{
+            // Safe-area padding is only meaningful when the keyboard is down;
+            // with it up the inset already lifted the panel clear of the edge.
+            paddingBottom: keyboardInset
+              ? '0.75rem'
+              : 'max(1.25rem, env(safe-area-inset-bottom))',
+          }}
+        >
           {children}
         </div>
       </div>
